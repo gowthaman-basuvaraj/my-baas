@@ -46,7 +46,13 @@ class DataSearchRepositoryImpl : DataSearchRepository {
 
     private val logger = LoggerFactory.getLogger("DataSearch")
 
-    data class Q(val jsonPath: String, val valueType: JsonValueType, val entityName: String, val value: Any)
+    data class Q(
+        val query: String,
+        val jsonPath: String,
+        val valueType: JsonValueType,
+        val entityName: String,
+        val value: Any
+    )
 
     override fun searchWithMultipleFilters(entityName: String, searchRequest: SearchRequest): List<String> {
         if (searchRequest.filters.isEmpty()) {
@@ -64,25 +70,25 @@ class DataSearchRepositoryImpl : DataSearchRepository {
 
 
             val qp = if (type == SearchType.EQ) {
-                Pair("$dbKey = ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                Q("$dbKey = ?", filter.jsonPath, valueType, entityName, filter.value)
             } else if (type == SearchType.HAS && valueType == JsonValueType.STRING) {
-                Pair("$dbKey ilike ?", Q(filter.jsonPath, valueType, entityName, "%${filter.value}%"))
+                Q("$dbKey ilike ?", filter.jsonPath, valueType, entityName, "%${filter.value}%")
             } else if (valueType == JsonValueType.NUMBER) {
                 when (type) {
                     SearchType.LT -> {
-                        Pair("$dbKey < ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                        Q("$dbKey < ?", filter.jsonPath, valueType, entityName, filter.value)
                     }
 
                     SearchType.LE -> {
-                        Pair("$dbKey <= ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                        Q("$dbKey <= ?", filter.jsonPath, valueType, entityName, filter.value)
                     }
 
                     SearchType.GT -> {
-                        Pair("$dbKey > ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                        Q("$dbKey > ?", filter.jsonPath, valueType, entityName, filter.value)
                     }
 
                     SearchType.GE -> {
-                        Pair("$dbKey >= ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                        Q("$dbKey >= ?", filter.jsonPath, valueType, entityName, filter.value)
                     }
 
                     else -> {
@@ -98,7 +104,7 @@ class DataSearchRepositoryImpl : DataSearchRepository {
             if (qp == null) {
                 null
             } else {
-                "$qStart and ${qp.first}" to qp.second
+                "$qStart and ${qp.query}" to qp
             }
         }
 

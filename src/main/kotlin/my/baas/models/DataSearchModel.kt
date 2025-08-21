@@ -15,9 +15,9 @@ enum class JsonValueType {
     NULL;
 
     fun dbTypeCast() = when (this) {
-        JsonValueType.STRING -> "::text"
-        JsonValueType.NUMBER -> "::numeric"
-        JsonValueType.BOOLEAN -> "::boolean"
+        STRING -> "::text"
+        NUMBER -> "::numeric"
+        BOOLEAN -> "::boolean"
         else -> "::text"
     }
 

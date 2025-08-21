@@ -8,6 +8,7 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import io.ebean.Database
 import io.ebean.DatabaseFactory
 import io.ebean.config.DatabaseConfig
+import io.ebean.config.TenantMode
 import io.ebean.datasource.DataSourceConfig
 import net.cactusthorn.config.core.factory.ConfigFactory
 
@@ -30,6 +31,7 @@ object AppContext {
             dc.currentTenantProvider = CurrentTenantProvider()// this will populate tenant filtering
             dc.isRunMigration = true
             dc.isDefaultServer = true
+            dc.tenantMode = TenantMode.PARTITION
         })
     }
 

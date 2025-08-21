@@ -1,7 +1,8 @@
 ### API Testing File for MyBaaS
-### Set base URL and auth token as variables
+### Set base URL, auth token and tenant host as variables
 @baseUrl = http://localhost:7070
 @authToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJpYXQiOjE2MTYyMzkwMjJ9.test-token
+@tenantHost = localhost:7070
 
 ### ============================================
 ### SCHEMA APIS
@@ -11,6 +12,7 @@
 POST {{baseUrl}}/api/schema
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "entityName": "users",
@@ -60,7 +62,8 @@ Authorization: {{authToken}}
     "AFTER_LOAD": "console.log('Data loaded');",
     "BEFORE_DELETE": "console.log('About to delete: ' + uniqueIdentifier);",
     "AFTER_DELETE": "console.log('Deleted: ' + uniqueIdentifier);"
-  }
+  },
+  "isValidationEnabled": true
 }
 
 ###
@@ -69,6 +72,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/schema
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "entityName": "users",
@@ -123,7 +127,8 @@ Authorization: {{authToken}}
     "MIGRATE_VERSION": "// Split name into firstName and lastName\nif (oldVersion === 'v1' && newVersion === 'v2') {\n  var nameParts = (data.name || '').split(' ');\n  data.firstName = nameParts[0] || '';\n  data.lastName = nameParts.slice(1).join(' ') || '';\n  delete data.name;\n}\nreturn data;",
     "BEFORE_SAVE": "console.log('Before save v2: ' + JSON.stringify(data));",
     "AFTER_SAVE": "console.log('After save v2: ' + uniqueIdentifier);"
-  }
+  },
+  "isValidationEnabled": true
 }
 
 ###
@@ -131,6 +136,7 @@ Authorization: {{authToken}}
 ### Get all schemas
 GET {{baseUrl}}/api/schema
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -138,6 +144,7 @@ Authorization: {{authToken}}
 # Replace {id} with actual schema ID from create response
 GET {{baseUrl}}/api/schema/1
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -146,6 +153,7 @@ Authorization: {{authToken}}
 PUT {{baseUrl}}/api/schema/1
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "entityName": "users",
@@ -170,7 +178,8 @@ Authorization: {{authToken}}
   "indexedJsonPaths": {
     "$.name": true,
     "$.email": true
-  }
+  },
+  "isValidationEnabled": true
 }
 
 ###
@@ -179,6 +188,7 @@ Authorization: {{authToken}}
 # Replace {id} with actual schema ID
 DELETE {{baseUrl}}/api/schema/1
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -189,12 +199,14 @@ Authorization: {{authToken}}
 ### Get JSON schema for entity and version
 GET {{baseUrl}}/api/data/users/v1/schema
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
 ### Get JSON schema for v2
 GET {{baseUrl}}/api/data/users/v2/schema
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -202,6 +214,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1/validate
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "Test User",
@@ -220,6 +233,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1/validate
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "Test User"
@@ -231,6 +245,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1/validate
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "Test User",
@@ -244,6 +259,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1/validate
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "",
@@ -257,6 +273,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v2/validate
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "firstName": "John",
@@ -281,6 +298,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "John Doe",
@@ -300,6 +318,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "Jane Smith",
@@ -318,6 +337,7 @@ Authorization: {{authToken}}
 ### Get all data models for an entity
 GET {{baseUrl}}/api/data/users
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -325,6 +345,7 @@ Authorization: {{authToken}}
 # Replace {uniqueIdentifier} with actual value from create response
 GET {{baseUrl}}/api/data/users/john.doe@example.com-1234567890
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -333,6 +354,7 @@ Authorization: {{authToken}}
 PUT {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "John Updated Doe",
@@ -353,6 +375,7 @@ Authorization: {{authToken}}
 PATCH {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "age": 32,
@@ -368,6 +391,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "filters": [
@@ -385,6 +409,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "filters": [
@@ -407,6 +432,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "filters": [
@@ -424,6 +450,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "filters": [
@@ -441,6 +468,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "filters": [
@@ -459,6 +487,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890/migrate
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "destinationVersion": "v2"
@@ -470,6 +499,7 @@ Authorization: {{authToken}}
 # Replace {uniqueIdentifier} with actual value
 DELETE {{baseUrl}}/api/data/users/john.doe@example.com-1234567890
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -480,6 +510,7 @@ Authorization: {{authToken}}
 ### Test 404 - Entity not found
 GET {{baseUrl}}/api/data/nonexistent
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -487,6 +518,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v999
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "Test User",
@@ -499,6 +531,7 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "name": "Missing Email"
@@ -509,6 +542,7 @@ Authorization: {{authToken}}
 ### Test 404 - Data model not found
 GET {{baseUrl}}/api/data/users/nonexistent-id
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 ###
 
@@ -516,9 +550,118 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890/migrate
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: {{tenantHost}}
 
 {
   "destinationVersion": "v999"
 }
 
+###
+
+### ============================================
+### RE-INDEX APIS
+### ============================================
+
+### Re-index all data models for an entity
+POST {{baseUrl}}/api/data/users/reindex
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "modifiedAfter": "2024-01-01T00:00:00Z"
+}
+
+###
+
+### Re-index all data models for an entity (from specific date)
+POST {{baseUrl}}/api/data/users/reindex
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "modifiedAfter": "2024-12-01T00:00:00Z"
+}
+
+###
+
+### Re-index with invalid date format (error test)
+POST {{baseUrl}}/api/data/users/reindex
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "modifiedAfter": "invalid-date"
+}
+
+###
+
+### ============================================
+### SCHEMA VALIDATION CONDITIONAL TESTING
+### ============================================
+
+### Create a schema with validation disabled
+POST {{baseUrl}}/api/schema
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "products",
+  "versionName": "v1",
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "price": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["name", "price"]
+  },
+  "uniqueIdentifierFormatter": "{name}-{timestamp}",
+  "indexedJsonPaths": {
+    "$.name": true,
+    "$.price": true
+  },
+  "isValidationEnabled": false
+}
+
+###
+
+### Test creating data with validation disabled (should accept invalid data)
+POST {{baseUrl}}/api/data/products/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "",
+  "price": -10,
+  "invalid_field": "this should be allowed"
+}
+
+###
+
+### ============================================
+### AUDIT LOGGING
+### ============================================
+### Note: Audit logging is performed automatically for all CRUD operations
+### on data models. The audit logs are stored in the database but there are
+### currently no API endpoints to query audit logs directly.
+### Audit logs capture:
+### - User who performed the action (from JWT token)
+### - Client IP address  
+### - Timestamp of the action
+### - Entity name and unique identifier
+### - Action type (CREATE, UPDATE, PATCH, DELETE, MIGRATE, RE_INDEX)
+### - Old and new data for comparison
+### - Tenant information
 ###
