@@ -26,6 +26,10 @@ class TenantModel(
     
     @DbJsonB
     @Column(nullable = true)
-    var settings: Map<String, Any>? = null
+    var settings: Map<String, Any>? = null,
+    
+    @DbJsonB
+    @Column(nullable = true)
+    var allowedIps: List<String>? = null
     
 ) : BaseModel()

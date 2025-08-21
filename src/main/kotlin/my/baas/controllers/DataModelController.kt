@@ -1,8 +1,10 @@
 package my.baas.controllers
 
 import my.baas.services.DataModelService
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
+import java.time.Instant
 
 object DataModelController {
 
@@ -111,5 +113,22 @@ object DataModelController {
     fun getActiveSubscriptions(ctx: Context) {
         val subscriptions = my.baas.services.WebSocketEventManager.getActiveSubscriptions()
         ctx.json(subscriptions)
+    }
+    
+    fun reindexDataModels(ctx: Context) {
+        data class ReindexRequest(
+            val modifiedAfter: String  // ISO-8601 format
+        )
+        
+        try {
+            val request = ctx.bodyAsClass(ReindexRequest::class.java)
+            val modifiedAfterInstant = Instant.parse(request.modifiedAfter)
+            
+            val result = dataModelService.reindexDataModels(ctx.pathParam("entityName"), modifiedAfterInstant)
+            ctx.json(result)
+            
+        } catch (e: Exception) {
+            throw BadRequestResponse("Invalid request format. Expected: {\"entityName\": \"optional\", \"modifiedAfter\": \"2024-01-01T00:00:00Z\"}")
+        }
     }
 }

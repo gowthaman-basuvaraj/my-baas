@@ -1,6 +1,5 @@
 package my.baas.repositories
 
-import io.ebean.DB
 import my.baas.config.AppContext
 import my.baas.controllers.SearchRequest
 import my.baas.models.DataSearchModel
@@ -38,7 +37,7 @@ class DataSearchRepositoryImpl : DataSearchRepository {
         entityName: String,
         uniqueIdentifier: String
     ): List<DataSearchModel> {
-        return DB.find(DataSearchModel::class.java)
+        return AppContext.db.find(DataSearchModel::class.java)
             .where()
             .eq("entityName", entityName)
             .eq("uniqueIdentifier", uniqueIdentifier)

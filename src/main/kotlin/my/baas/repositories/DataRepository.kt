@@ -1,7 +1,6 @@
 package my.baas.repositories
 
-import io.ebean.DB
-import my.baas.config.AppContext.db
+import my.baas.config.AppContext
 import my.baas.models.DataModel
 
 interface DataRepository {
@@ -24,15 +23,15 @@ class DataRepositoryImpl : DataRepository {
     }
 
     override fun findById(id: Long): DataModel? {
-        return DB.find(DataModel::class.java, id)
+        return AppContext.db.find(DataModel::class.java, id)
     }
 
     override fun findAll(): List<DataModel> {
-        return DB.find(DataModel::class.java).findList()
+        return AppContext.db.find(DataModel::class.java).findList()
     }
 
     override fun findAllByEntityName(entityName: String): List<DataModel> {
-        return DB.find(DataModel::class.java)
+        return AppContext.db.find(DataModel::class.java)
             .where()
             .eq("entityName", entityName)
             .findList()
@@ -54,7 +53,7 @@ class DataRepositoryImpl : DataRepository {
     }
 
     override fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel? {
-        return DB.find(DataModel::class.java)
+        return AppContext.db.find(DataModel::class.java)
             .where()
             .eq("uniqueIdentifier", uniqueIdentifier)
             .eq("entityName", entityName)
@@ -65,7 +64,7 @@ class DataRepositoryImpl : DataRepository {
         entityName: String,
         uniqueIdentifiers: List<String>
     ): List<DataModel> {
-        return db.find(DataModel::class.java)
+        return AppContext.db.find(DataModel::class.java)
             .where()
             .eq("entityName", entityName)
             .`in`("uniqueIdentifier", uniqueIdentifiers)

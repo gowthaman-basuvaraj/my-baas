@@ -4,7 +4,8 @@ import my.baas.models.TenantModel
 
 data class User(
     val userId: String,
-    val tenant: TenantModel? = null
+    val tenant: TenantModel? = null,
+    val clientIp: String? = null
 )
 
 object CurrentUser {

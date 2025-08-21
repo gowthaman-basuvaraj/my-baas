@@ -43,6 +43,7 @@ fun main() {
                             before {
                                 dataModelService.validateEntityExists(it.pathParam("entityName"))
                             }
+                            post("reindex", DataModelController::reindexDataModels)
                             get(DataModelController::getAll)
                             post("search", DataModelController::search)
                             path("{versionName}") {

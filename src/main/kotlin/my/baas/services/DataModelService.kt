@@ -4,21 +4,20 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
 import com.networknt.schema.ValidationMessage
-import io.ebean.DB
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
+import my.baas.config.AppContext
 import my.baas.config.AppContext.objectMapper
 import my.baas.controllers.SearchRequest
-import my.baas.models.DataModel
-import my.baas.models.DataSearchModel
-import my.baas.models.JsonValueType
-import my.baas.models.SchemaModel
+import my.baas.models.*
 import my.baas.repositories.DataRepository
 import my.baas.repositories.DataRepositoryImpl
 import my.baas.repositories.DataSearchRepository
 import my.baas.repositories.DataSearchRepositoryImpl
+import org.slf4j.LoggerFactory
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.*
 
 enum class SearchType {
@@ -38,7 +37,7 @@ class DataModelService(
     private val eventManager: WebSocketEventManager = WebSocketEventManager,
     private val redisPublisher: RedisEventPublisher = RedisEventPublisher
 ) {
-
+    private val logger = LoggerFactory.getLogger(javaClass)
     private val schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7)
 
     fun create(entityName: String, versionName: String, data: Map<String, Any>): DataModel {
@@ -63,6 +62,9 @@ class DataModelService(
 
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, savedDataModel)
+
+        // Log audit trail
+        AuditService.logDataModelAction(AuditAction.CREATE, savedDataModel)
 
         // Publish WebSocket event
         publishEvent(EventType.CREATED, entityName, savedDataModel.uniqueIdentifier, versionName, savedDataModel.data)
@@ -119,6 +121,9 @@ class DataModelService(
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, updatedDataModel, oldData)
 
+        // Log audit trail
+        AuditService.logDataModelAction(AuditAction.UPDATE, updatedDataModel, oldData)
+
         // Publish WebSocket event
         publishEvent(
             EventType.UPDATED,
@@ -163,6 +168,9 @@ class DataModelService(
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, updatedDataModel, oldData)
 
+        // Log audit trail
+        AuditService.logDataModelAction(AuditAction.PATCH, updatedDataModel, oldData)
+
         // Publish WebSocket event
         publishEvent(
             EventType.PATCHED,
@@ -189,6 +197,9 @@ class DataModelService(
             if (deleted) {
                 // Execute afterDelete hook
                 jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.AFTER_DELETE, dataModel)
+
+                // Log audit trail
+                AuditService.logDataModelAction(AuditAction.DELETE, dataModel, dataModel.data)
 
                 // Publish WebSocket event
                 publishEvent(EventType.DELETED, entityName, uniqueIdentifier, dataModel.versionName, null)
@@ -242,7 +253,7 @@ class DataModelService(
         }
     }
 
-    fun migrateVersion(entityName: String, uniqueIdentifier: String, destinationVersion: String): DataModel? {
+    fun migrateVersion(entityName: String, uniqueIdentifier: String, destinationVersion: String): DataModel {
         // Check if destination version exists
         validateEntityAndVersionExists(entityName, destinationVersion)
 
@@ -297,6 +308,14 @@ class DataModelService(
         // Re-index with new schema's indexed paths
         indexDataModel(updatedDataModel)
 
+        // Log audit trail
+        AuditService.logDataModelAction(
+            AuditAction.MIGRATE,
+            updatedDataModel,
+            oldData,
+            "Migrated from version $oldVersionName to $destinationVersion"
+        )
+
         // Publish WebSocket event
         publishEvent(
             EventType.MIGRATED,
@@ -307,6 +326,76 @@ class DataModelService(
         )
 
         return updatedDataModel
+    }
+
+    fun reindexDataModels(entityName: String?, modifiedAfter: Instant): Map<String, Any?> {
+        val startTime = System.currentTimeMillis()
+
+        try {
+            val query = AppContext.db.find(DataModel::class.java).where()
+
+            // Filter by entity name if provided
+            entityName?.let { query.eq("entityName", it) }
+
+            // Filter by modification date
+            query.ge("whenModified", modifiedAfter)
+
+            val dataModels = query.findList()
+
+            var reindexedCount = 0
+            val errors = mutableListOf<String>()
+
+            dataModels.forEach { dataModel ->
+                try {
+                    // Remove old indexed data first
+                    searchRepository.deleteByEntityNameAndUniqueIdentifier(
+                        dataModel.entityName,
+                        dataModel.uniqueIdentifier
+                    )
+
+                    // Re-index the data model
+                    indexDataModel(dataModel)
+                    reindexedCount++
+
+                    // Log audit trail for re-indexing
+                    AuditService.logAction(
+                        AuditAction.RE_INDEX,
+                        dataModel.entityName,
+                        dataModel.uniqueIdentifier,
+                        notes = "Re-indexed data model modified after $modifiedAfter"
+                    )
+
+                } catch (e: Exception) {
+                    val error = "Failed to re-index ${dataModel.entityName}/${dataModel.uniqueIdentifier}: ${e.message}"
+                    errors.add(error)
+                    logger.error(error, e)
+                }
+            }
+
+            val duration = System.currentTimeMillis() - startTime
+
+            return mapOf(
+                "success" to true,
+                "totalFound" to dataModels.size,
+                "reindexedCount" to reindexedCount,
+                "errors" to errors,
+                "durationMs" to duration,
+                "entityName" to entityName,
+                "modifiedAfter" to modifiedAfter.toString()
+            )
+
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            logger.error("Re-indexing operation failed", e)
+
+            return mapOf(
+                "success" to false,
+                "error" to e.message,
+                "durationMs" to duration,
+                "entityName" to entityName,
+                "modifiedAfter" to modifiedAfter.toString()
+            )
+        }
     }
 
     private fun validateDataAgainstSchema(dataModel: DataModel) {
@@ -328,7 +417,7 @@ class DataModelService(
     }
 
     fun validateEntityExists(entityName: String) {
-        val schemaExists = DB.find(SchemaModel::class.java)
+        val schemaExists = AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
             .exists()
@@ -339,7 +428,7 @@ class DataModelService(
     }
 
     fun validateEntityAndVersionExists(entityName: String, versionName: String) {
-        val schemaExists = DB.find(SchemaModel::class.java)
+        val schemaExists = AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
             .eq("versionName", versionName)
@@ -351,7 +440,7 @@ class DataModelService(
     }
 
     private fun loadSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel {
-        return DB.find(SchemaModel::class.java)
+        return AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
             .eq("versionName", versionName)

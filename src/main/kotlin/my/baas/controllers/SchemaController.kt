@@ -1,9 +1,9 @@
 package my.baas.controllers
 
-import io.ebean.DB
 import io.javalin.apibuilder.CrudHandler
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
+import my.baas.config.AppContext
 import my.baas.models.SchemaModel
 
 object SchemaController : CrudHandler {
@@ -16,18 +16,18 @@ object SchemaController : CrudHandler {
 
     override fun getOne(ctx: Context, resourceId: String) {
 
-        val schema = DB.find(SchemaModel::class.java, resourceId)
+        val schema = AppContext.db.find(SchemaModel::class.java, resourceId)
             ?: throw NotFoundResponse("Schema not found")
         ctx.json(schema)
     }
 
     override fun getAll(ctx: Context) {
-        val schemas = DB.find(SchemaModel::class.java).findList()
+        val schemas = AppContext.db.find(SchemaModel::class.java).findList()
         ctx.json(schemas)
     }
 
     override fun update(ctx: Context, resourceId: String) {
-        val schema = DB.find(SchemaModel::class.java, resourceId)
+        val schema = AppContext.db.find(SchemaModel::class.java, resourceId)
             ?: throw NotFoundResponse("Schema not found")
 
         val updatedSchema = ctx.bodyAsClass(SchemaModel::class.java)
@@ -43,7 +43,7 @@ object SchemaController : CrudHandler {
     }
 
     override fun delete(ctx: Context, resourceId: String) {
-        val schema = DB.find(SchemaModel::class.java, resourceId)
+        val schema = AppContext.db.find(SchemaModel::class.java, resourceId)
             ?: throw NotFoundResponse("Schema not found")
         schema.delete()
         ctx.status(204)
