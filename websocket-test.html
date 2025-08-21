@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyBaaS WebSocket Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        button.danger {
+            background-color: #f44336;
+        }
+        button.danger:hover {
+            background-color: #da190b;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        #messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .message.sent {
+            background-color: #e3f2fd;
+            border-left: 3px solid #2196F3;
+        }
+        .message.received {
+            background-color: #f1f8e9;
+            border-left: 3px solid #8BC34A;
+        }
+        .message.error {
+            background-color: #ffebee;
+            border-left: 3px solid #f44336;
+        }
+        .message.system {
+            background-color: #fff3e0;
+            border-left: 3px solid #ff9800;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        .status.disconnected {
+            background-color: #ffcdd2;
+            color: #c62828;
+        }
+        .subscription-item {
+            background-color: #e8f5e9;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>MyBaaS WebSocket Event Testing</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Connection</h2>
+            <div id="status" class="status disconnected">Disconnected</div>
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button onclick="sendPing()">Send Ping</button>
+            
+            <h3>Subscribe to Events</h3>
+            <label>Entity Name:</label>
+            <input type="text" id="entityName" placeholder="e.g., users" value="users">
+            
+            <label>Unique Identifier (optional):</label>
+            <input type="text" id="uniqueIdentifier" placeholder="e.g., user-123 (leave empty for all)">
+            
+            <button onclick="subscribe()">Subscribe</button>
+            <button onclick="unsubscribe()" class="danger">Unsubscribe</button>
+            
+            <h3>Active Subscriptions</h3>
+            <div id="subscriptions"></div>
+        </div>
+        
+        <div class="panel">
+            <h2>Messages</h2>
+            <button onclick="clearMessages()">Clear Messages</button>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let subscriptions = new Set();
+        
+        function updateStatus(connected) {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+        
+        function addMessage(message, type = 'received') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            let content = `[${timestamp}] `;
+            
+            if (typeof message === 'object') {
+                content += JSON.stringify(message, null, 2);
+            } else {
+                content += message;
+            }
+            
+            messageDiv.textContent = content;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function connect() {
+            if (ws) {
+                ws.close();
+            }
+            
+            // Connect to WebSocket endpoint
+            ws = new WebSocket('ws://localhost:7070/ws/events');
+            
+            ws.onopen = function() {
+                updateStatus(true);
+                addMessage('WebSocket connection established', 'system');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage(data, 'received');
+                    
+                    // Handle specific message types
+                    if (data.type === 'subscribed') {
+                        const key = data.uniqueIdentifier ? 
+                            `${data.entityName}:${data.uniqueIdentifier}` : 
+                            data.entityName;
+                        subscriptions.add(key);
+                        updateSubscriptionsList();
+                    } else if (data.type === 'unsubscribed') {
+                        const key = data.uniqueIdentifier ? 
+                            `${data.entityName}:${data.uniqueIdentifier}` : 
+                            data.entityName;
+                        subscriptions.delete(key);
+                        updateSubscriptionsList();
+                    }
+                } catch (e) {
+                    addMessage(event.data, 'received');
+                }
+            };
+            
+            ws.onerror = function(error) {
+                addMessage('WebSocket error: ' + error, 'error');
+                updateStatus(false);
+            };
+            
+            ws.onclose = function() {
+                addMessage('WebSocket connection closed', 'system');
+                updateStatus(false);
+                subscriptions.clear();
+                updateSubscriptionsList();
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function subscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('Not connected to WebSocket', 'error');
+                return;
+            }
+            
+            const entityName = document.getElementById('entityName').value;
+            const uniqueIdentifier = document.getElementById('uniqueIdentifier').value;
+            
+            if (!entityName) {
+                addMessage('Entity name is required', 'error');
+                return;
+            }
+            
+            const message = {
+                action: 'subscribe',
+                entityName: entityName
+            };
+            
+            if (uniqueIdentifier) {
+                message.uniqueIdentifier = uniqueIdentifier;
+            }
+            
+            ws.send(JSON.stringify(message));
+            addMessage(message, 'sent');
+        }
+        
+        function unsubscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('Not connected to WebSocket', 'error');
+                return;
+            }
+            
+            const entityName = document.getElementById('entityName').value;
+            const uniqueIdentifier = document.getElementById('uniqueIdentifier').value;
+            
+            if (!entityName) {
+                addMessage('Entity name is required', 'error');
+                return;
+            }
+            
+            const message = {
+                action: 'unsubscribe',
+                entityName: entityName
+            };
+            
+            if (uniqueIdentifier) {
+                message.uniqueIdentifier = uniqueIdentifier;
+            }
+            
+            ws.send(JSON.stringify(message));
+            addMessage(message, 'sent');
+        }
+        
+        function sendPing() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('Not connected to WebSocket', 'error');
+                return;
+            }
+            
+            const message = { action: 'ping' };
+            ws.send(JSON.stringify(message));
+            addMessage(message, 'sent');
+        }
+        
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+        
+        function updateSubscriptionsList() {
+            const subscriptionsDiv = document.getElementById('subscriptions');
+            if (subscriptions.size === 0) {
+                subscriptionsDiv.innerHTML = '<p style="color: #999;">No active subscriptions</p>';
+            } else {
+                subscriptionsDiv.innerHTML = '';
+                subscriptions.forEach(sub => {
+                    const item = document.createElement('div');
+                    item.className = 'subscription-item';
+                    item.textContent = sub;
+                    subscriptionsDiv.appendChild(item);
+                });
+            }
+        }
+        
+        // Initialize
+        updateStatus(false);
+        updateSubscriptionsList();
+    </script>
+</body>
+</html>

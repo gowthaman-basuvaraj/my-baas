@@ -1,0 +1,52 @@
+[versions]
+javalin = "6.7.0"
+ebean = "15.8.0"
+cactusthorn-config = "0.81"
+kotlin = "2.1.20"
+jackson = "2.17.1"
+jose4j = "0.9.6"
+json-schema-validator = "1.0.87"
+json-path = "2.8.0"
+
+postgresql = "42.7.3"
+log4j = "2.23.1"
+jakarta-persistence = "3.1.0"
+
+ebean-ddl-generator = "15.8.0"
+ebean-platform-postgres = "15.8.0"
+ebean-migration = "13.24.0"
+delight-nashorn-sandbox = "0.5.3"
+jedis = "5.1.0"
+
+[libraries]
+javalin = { module = "io.javalin:javalin", version.ref = "javalin" }
+ebean = { module = "io.ebean:ebean", version.ref = "ebean" }
+cactusthorn-config = { module = "net.cactusthorn.config:config-core", version.ref = "cactusthorn-config" }
+cactusthorn-config-compiler = { module = "net.cactusthorn.config:config-compiler", version.ref = "cactusthorn-config" }
+
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+
+jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+json-path = { module = "com.jayway.jsonpath:json-path", version.ref = "json-path" }
+
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+log4j-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j" }
+log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
+jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api", version.ref = "jakarta-persistence" }
+
+ebean-ddl-generator = { module = "io.ebean:ebean-ddl-generator", version.ref = "ebean-ddl-generator" }
+ebean-platform-postgres = { module = "io.ebean:ebean-platform-postgres", version.ref = "ebean-platform-postgres" }
+ebean-migration = { module = "io.ebean:ebean-migration", version.ref = "ebean-migration" }
+delight-nashorn-sandbox = { module = "org.javadelight:delight-nashorn-sandbox", version.ref = "delight-nashorn-sandbox" }
+jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
+
+
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+ebean = { id = "io.ebean", version.ref = "ebean" }
+shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+
