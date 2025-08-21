@@ -2,7 +2,6 @@ package my.baas
 
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
-import io.javalin.http.NotFoundResponse
 import io.javalin.json.JavalinJackson
 import my.baas.auth.AuthHandler
 import my.baas.auth.CurrentUser
@@ -41,30 +40,23 @@ fun main() {
                         get("subscriptions", DataModelController::getActiveSubscriptions)
                         path("{entityName}") {
                             before {
-                                dataModelService.validateEntityExists(it.pathParam("entityName"))
+                                dataModelService.validateSchemaExistsForEntity(it.pathParam("entityName"))
                             }
                             post("reindex", DataModelController::reindexDataModels)
                             get(DataModelController::getAll)
                             post("search", DataModelController::search)
                             path("{versionName}") {
                                 before {
-                                    dataModelService.validateEntityAndVersionExists(
+                                    dataModelService.validateSchemaExistsForEntityAndVersion(
                                         it.pathParam("entityName"),
                                         it.pathParam("versionName")
                                     )
-
                                 }
+                                get(DataModelController::getAll)
                                 get("schema", DataModelController::getSchema)
                                 post("validate", DataModelController::validatePayload)
                                 post(DataModelController::create)
                                 path("{uniqueIdentifier}") {
-                                    before {
-                                        dataModelService.findByUniqueIdentifier(
-                                            it.pathParam("entityName"),
-                                            it.pathParam("uniqueIdentifier")
-                                        )
-                                            ?: throw NotFoundResponse("DataModel not found")
-                                    }
                                     get(DataModelController::getOne)
                                     put(DataModelController::update)
                                     patch(DataModelController::patch)

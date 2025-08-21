@@ -5,6 +5,7 @@ import io.ebean.annotation.Index
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import java.time.Instant
 
 enum class JsonValueType {
     STRING,
@@ -48,15 +49,15 @@ enum class JsonValueType {
 )
 @Index(
     name = "search_value_boolean",
-    definition = "CREATE INDEX search_value_text ON data_search_model USING BTREE (((value->'value')::numeric)) where value_type = 'NUMBER'"
+    definition = "CREATE INDEX search_value_text ON data_search_model USING BTREE (((value->'value')::boolean)) where value_type = 'BOOLEAN'"
 )
 @Index(
     name = "search_value_gin",
-    definition = "CREATE INDEX search_value_gin ON data_search_model USING GIN((value->'value'));"
+    definition = "CREATE INDEX search_value_gin ON data_search_model USING GIN((value->'value'))"
 )
 @Index(
     name = "search_gin",
-    definition = "CREATE INDEX search_gin ON data_search_model USING GIN(value);"
+    definition = "CREATE INDEX search_gin ON data_search_model USING GIN(value)"
 )
 class DataSearchModel(
 
@@ -73,6 +74,10 @@ class DataSearchModel(
     @Enumerated(EnumType.STRING)
     var valueType: JsonValueType,
 
-    var arrayIdx: Int? = null
+    var arrayIdx: Int? = null,
+
+    var dataCreatedAt: Instant? = null,
+
+    var dataModifiedAt: Instant? = null
 
 ) : BaseTenantModel()

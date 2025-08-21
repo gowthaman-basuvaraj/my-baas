@@ -1,10 +1,11 @@
 package my.baas.controllers
 
-import my.baas.services.DataModelService
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
+import my.baas.services.DataModelService
 import java.time.Instant
+import kotlin.math.max
 
 object DataModelController {
 
@@ -24,14 +25,17 @@ object DataModelController {
         val entityName = ctx.pathParam("entityName")
 
         val dataModel = dataModelService.findByUniqueIdentifier(entityName, uniqueIdentifier)
-            ?: throw NotFoundResponse("DataModel not found")
+            ?: throw NotFoundResponse("DataModel not found for entity: $entityName, and uniqueIdentifier: $uniqueIdentifier")
         ctx.json(dataModel)
     }
 
     fun getAll(ctx: Context) {
         val entityName = ctx.pathParam("entityName")
+        val versionName = ctx.pathParamMap()["versionName"] //optionally
+        val pageSize = max(ctx.queryParam("pageSize")?.toIntOrNull() ?: 100, 100)
+        val pageNo = ctx.queryParam("pageNo")?.toIntOrNull() ?: 1
 
-        val dataModels = dataModelService.findAllByEntityName(entityName)
+        val dataModels = dataModelService.findAllByEntityName(entityName, versionName, pageNo, pageSize)
         ctx.json(dataModels)
     }
 
@@ -79,24 +83,25 @@ object DataModelController {
     fun migrate(ctx: Context) {
         val uniqueIdentifier = ctx.pathParam("uniqueIdentifier")
         val entityName = ctx.pathParam("entityName")
-        
+
         // Expect a destination version in the request body
         data class MigrateRequest(val destinationVersion: String)
+
         val request = ctx.bodyAsClass(MigrateRequest::class.java)
-        
+
         val migratedDataModel = dataModelService.migrateVersion(
-            entityName, 
-            uniqueIdentifier, 
+            entityName,
+            uniqueIdentifier,
             request.destinationVersion
-        ) ?: throw NotFoundResponse("DataModel not found")
-        
+        )
+
         ctx.json(migratedDataModel)
     }
 
     fun getSchema(ctx: Context) {
         val entityName = ctx.pathParam("entityName")
         val versionName = ctx.pathParam("versionName")
-        
+
         val schema = dataModelService.getSchema(entityName, versionName)
         ctx.json(schema)
     }
@@ -104,29 +109,29 @@ object DataModelController {
     fun validatePayload(ctx: Context) {
         val entityName = ctx.pathParam("entityName")
         val versionName = ctx.pathParam("versionName")
-        
+
         val payload = ctx.bodyAsClass(Map::class.java) as Map<String, Any>
         val validationResult = dataModelService.validatePayload(entityName, versionName, payload)
         ctx.json(validationResult)
     }
-    
+
     fun getActiveSubscriptions(ctx: Context) {
         val subscriptions = my.baas.services.WebSocketEventManager.getActiveSubscriptions()
         ctx.json(subscriptions)
     }
-    
+
     fun reindexDataModels(ctx: Context) {
         data class ReindexRequest(
             val modifiedAfter: String  // ISO-8601 format
         )
-        
+
         try {
             val request = ctx.bodyAsClass(ReindexRequest::class.java)
             val modifiedAfterInstant = Instant.parse(request.modifiedAfter)
-            
+
             val result = dataModelService.reindexDataModels(ctx.pathParam("entityName"), modifiedAfterInstant)
             ctx.json(result)
-            
+
         } catch (e: Exception) {
             throw BadRequestResponse("Invalid request format. Expected: {\"entityName\": \"optional\", \"modifiedAfter\": \"2024-01-01T00:00:00Z\"}")
         }

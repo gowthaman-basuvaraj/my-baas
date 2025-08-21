@@ -7,7 +7,7 @@ import jakarta.persistence.Entity
 
 
 @Entity
-@Index(columnNames = ["entity_name", "version_name"], unique = true)
+@Index(columnNames = ["entity_name", "version_name", "tenant_id"], unique = true)
 class SchemaModel(
 
     var entityName: String,

@@ -1,5 +1,6 @@
 package my.baas.repositories
 
+import io.ebean.PagedList
 import my.baas.config.AppContext
 import my.baas.models.DataModel
 
@@ -7,7 +8,7 @@ interface DataRepository {
     fun save(dataModel: DataModel): DataModel
     fun findById(id: Long): DataModel?
     fun findAll(): List<DataModel>
-    fun findAllByEntityName(entityName: String): List<DataModel>
+    fun findAllByEntityName(entityName: String, versionName: String?, pageNo: Int, pageSize: Int): PagedList<DataModel>
     fun update(dataModel: DataModel): DataModel
     fun deleteById(id: Long): Boolean
     fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel?
@@ -30,11 +31,23 @@ class DataRepositoryImpl : DataRepository {
         return AppContext.db.find(DataModel::class.java).findList()
     }
 
-    override fun findAllByEntityName(entityName: String): List<DataModel> {
+    override fun findAllByEntityName(
+        entityName: String,
+        versionName: String?,
+        pageNo: Int,
+        pageSize: Int
+    ): PagedList<DataModel> {
         return AppContext.db.find(DataModel::class.java)
             .where()
             .eq("entityName", entityName)
-            .findList()
+            .apply {
+                if (versionName != null) {
+                    eq("versionName", versionName)
+                }
+            }
+            .setFirstRow((pageNo - 1) * pageSize)
+            .setMaxRows(pageSize)
+            .findPagedList()
     }
 
     override fun update(dataModel: DataModel): DataModel {

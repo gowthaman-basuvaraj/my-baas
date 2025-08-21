@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
 import com.networknt.schema.ValidationMessage
+import io.ebean.PagedList
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
@@ -72,8 +73,13 @@ class DataModelService(
         return savedDataModel
     }
 
-    fun findAllByEntityName(entityName: String): List<DataModel> {
-        return repository.findAllByEntityName(entityName)
+    fun findAllByEntityName(
+        entityName: String,
+        versionName: String?,
+        pageNo: Int,
+        pageSize: Int
+    ): PagedList<DataModel> {
+        return repository.findAllByEntityName(entityName, versionName, pageNo, pageSize)
     }
 
     fun searchWithFilters(entityName: String, searchRequest: SearchRequest): List<DataModel> {
@@ -255,7 +261,7 @@ class DataModelService(
 
     fun migrateVersion(entityName: String, uniqueIdentifier: String, destinationVersion: String): DataModel {
         // Check if destination version exists
-        validateEntityAndVersionExists(entityName, destinationVersion)
+        validateSchemaExistsForEntityAndVersion(entityName, destinationVersion)
 
         // Load the existing data model
         val existingDataModel = repository.findByUniqueIdentifier(entityName, uniqueIdentifier)
@@ -416,22 +422,19 @@ class DataModelService(
         }
     }
 
-    fun validateEntityExists(entityName: String) {
-        val schemaExists = AppContext.db.find(SchemaModel::class.java)
-            .where()
-            .eq("entityName", entityName)
-            .exists()
-
-        if (!schemaExists) {
-            throw NotFoundResponse("Entity '$entityName' not found")
-        }
+    fun validateSchemaExistsForEntity(entityName: String) {
+       return validateSchemaExistsForEntityAndVersion(entityName)
     }
 
-    fun validateEntityAndVersionExists(entityName: String, versionName: String) {
+    fun validateSchemaExistsForEntityAndVersion(entityName: String, versionName: String? = null) {
         val schemaExists = AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
-            .eq("versionName", versionName)
+            .apply {
+                if(versionName != null){
+                    eq("versionName", versionName)
+                }
+            }
             .exists()
 
         if (!schemaExists) {
@@ -514,8 +517,15 @@ class DataModelService(
                         jsonPath = jsonPathStr,
                         value = valueMap,
                         valueType = jsonValueType,
-                        arrayIdx = extractedValue.arrayIndex
+                        arrayIdx = extractedValue.arrayIndex,
+                        dataCreatedAt = dataModel.whenCreated,
+                        dataModifiedAt = dataModel.whenModified
                     )
+                    
+                    // Set tenant information for the search entity
+                    searchEntity.tenant = dataModel.tenant
+                    searchEntity.tenantId = dataModel.tenantId
+                    
                     searchEntities.add(searchEntity)
                 }
             }
