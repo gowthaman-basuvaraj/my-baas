@@ -11,13 +11,9 @@ import my.baas.auth.CurrentUser
 import my.baas.config.AppContext.objectMapper
 import my.baas.controllers.SearchRequest
 import my.baas.models.DataModel
-import my.baas.models.DataSearchModel
-import my.baas.models.JsonValueType
 import my.baas.models.SchemaModel
 import my.baas.repositories.DataRepository
 import my.baas.repositories.DataRepositoryImpl
-import my.baas.repositories.DataSearchRepository
-import my.baas.repositories.DataSearchRepositoryImpl
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -32,8 +28,6 @@ enum class SearchType {
 
 class DataModelService(
     private val repository: DataRepository = DataRepositoryImpl(),
-    private val searchRepository: DataSearchRepository = DataSearchRepositoryImpl(),
-    private val jsonPathExtractor: JsonPathExtractor = JsonPathExtractor,
     private val jsExecutionService: JavaScriptExecutionService = JavaScriptExecutionService,
     private val eventManager: WebSocketEventManager = WebSocketEventManager,
     private val redisPublisher: RedisEventPublisher = RedisEventPublisher
@@ -59,7 +53,6 @@ class DataModelService(
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.BEFORE_SAVE, dataModel)
 
         val savedDataModel = repository.save(dataModel)
-        indexDataModel(savedDataModel)
 
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, savedDataModel)
@@ -75,16 +68,8 @@ class DataModelService(
     }
 
     fun searchWithFilters(entityName: String, searchRequest: SearchRequest): List<DataModel> {
-        val uniqueIdentifiers = searchRepository.searchWithMultipleFilters(entityName, searchRequest)
-
-        if (uniqueIdentifiers.isEmpty()) {
-            return emptyList()
-        }
-
-        // Load DataModels by unique identifiers
-        return uniqueIdentifiers.mapNotNull { uniqueIdentifier ->
-            repository.findByUniqueIdentifier(entityName, uniqueIdentifier)
-        }.distinct()
+        // Search functionality has been removed - returning empty results
+        return emptyList()
     }
 
     fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel? {
@@ -113,11 +98,9 @@ class DataModelService(
         // Execute beforeSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.BEFORE_SAVE, existingDataModel, oldData)
 
-        // Remove old indexed data
-        searchRepository.deleteByEntityNameAndUniqueIdentifier(entityName, uniqueIdentifier)
+        // Search indexing has been removed
 
         val updatedDataModel = repository.update(existingDataModel)
-        indexDataModel(updatedDataModel)
 
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, updatedDataModel, oldData)
@@ -157,11 +140,9 @@ class DataModelService(
         // Execute beforeSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.BEFORE_SAVE, existingDataModel, oldData)
 
-        // Remove old indexed data
-        searchRepository.deleteByEntityNameAndUniqueIdentifier(entityName, uniqueIdentifier)
+        // Search indexing has been removed
 
         val updatedDataModel = repository.update(existingDataModel)
-        indexDataModel(updatedDataModel)
 
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, updatedDataModel, oldData)
@@ -184,8 +165,7 @@ class DataModelService(
             // Execute beforeDelete hook
             jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.BEFORE_DELETE, dataModel)
 
-            // Remove indexed data
-            searchRepository.deleteByEntityNameAndUniqueIdentifier(dataModel.entityName, uniqueIdentifier)
+            // Search indexing has been removed
 
             val deleted = repository.deleteByUniqueIdentifier(entityName, uniqueIdentifier)
 
@@ -291,14 +271,12 @@ class DataModelService(
         // Validate the migrated data against the new schema
         validateDataAgainstSchema(existingDataModel)
 
-        // Remove old indexed data
-        searchRepository.deleteByEntityNameAndUniqueIdentifier(entityName, uniqueIdentifier)
+        // Search indexing has been removed
 
         // Save the updated model
         val updatedDataModel = repository.update(existingDataModel)
 
-        // Re-index with new schema's indexed paths
-        indexDataModel(updatedDataModel)
+        // Indexing functionality has been removed
 
         // Publish WebSocket event
         publishEvent(
@@ -408,37 +386,6 @@ class DataModelService(
         }
     }
 
-    private fun indexDataModel(dataModel: DataModel) {
-        val indexedPaths = dataModel.schema.indexedJsonPaths
-        if (indexedPaths.isEmpty()) return
-
-        val searchEntities = mutableListOf<DataSearchModel>()
-
-        indexedPaths.forEach { (jsonPathStr, shouldIndex) ->
-            if (shouldIndex) {
-                val extractedValues = jsonPathExtractor.extractValueWithArrayIndex(dataModel.data, jsonPathStr)
-
-                extractedValues.forEach { extractedValue ->
-                    val valueMap = jsonPathExtractor.createValueMap(extractedValue.value)
-                    val jsonValueType = JsonValueType.determineJsonValueType(extractedValue.value)
-
-                    val searchEntity = DataSearchModel(
-                        entityName = dataModel.entityName,
-                        uniqueIdentifier = dataModel.uniqueIdentifier,
-                        jsonPath = jsonPathStr,
-                        value = valueMap,
-                        valueType = jsonValueType,
-                        arrayIdx = extractedValue.arrayIndex
-                    )
-                    searchEntities.add(searchEntity)
-                }
-            }
-        }
-
-        if (searchEntities.isNotEmpty()) {
-            searchRepository.saveAll(searchEntities)
-        }
-    }
 
     @Suppress("UNCHECKED_CAST")
     private fun deepMergeData(existing: Map<String, Any>, patch: Map<String, Any>): Map<String, Any> {
