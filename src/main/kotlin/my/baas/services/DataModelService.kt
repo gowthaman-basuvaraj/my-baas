@@ -81,10 +81,7 @@ class DataModelService(
             return emptyList()
         }
 
-        // Load DataModels by unique identifiers
-        return uniqueIdentifiers.mapNotNull { uniqueIdentifier ->
-            repository.findByUniqueIdentifier(entityName, uniqueIdentifier)
-        }.distinct()
+        return repository.findByUniqueIdentifiers(entityName, uniqueIdentifiers)
     }
 
     fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel? {

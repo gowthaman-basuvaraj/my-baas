@@ -1,6 +1,7 @@
 package my.baas.repositories
 
 import io.ebean.DB
+import my.baas.config.AppContext
 import my.baas.controllers.SearchRequest
 import my.baas.models.DataSearchModel
 import my.baas.models.JsonValueType
@@ -45,68 +46,82 @@ class DataSearchRepositoryImpl : DataSearchRepository {
     }
 
     private val logger = LoggerFactory.getLogger("DataSearch")
+
+    data class Q(val jsonPath: String, val valueType: JsonValueType, val entityName: String, val value: Any)
+
     override fun searchWithMultipleFilters(entityName: String, searchRequest: SearchRequest): List<String> {
         if (searchRequest.filters.isEmpty()) {
             return emptyList()
         }
 
-        val query = DB.find(DataSearchModel::class.java)
-            .where()
-            .eq("entityName", entityName)
+        val queryAndParam = searchRequest.filters.mapNotNull { filter ->
+
+            val qStart =
+                "select unique_identifier from data_search_model where json_path = ? and entity_name = ? and value_type = ?"
+            val valueType = filter.jsonType()
+            val typeCast = valueType.dbTypeCast()
+            val dbKey = "{value->'value'}$typeCast"
+            val type = filter.searchType
 
 
-            .apply {
-                or()
-                searchRequest.filters.forEach { filter ->
-
-                    val valueType = filter.jsonType()
-                    val typeCast = valueType.dbTypeCast()
-                    val dbKey = "{value->'value'}$typeCast"
-                    val type = filter.searchType
-
-                    and()
-                    eq("jsonPath", filter.jsonPath)
-                    eq("valueType", valueType)
-
-                    if (type == SearchType.EQ) {
-                        raw("$dbKey = ?", filter.value)
-                    } else if (type == SearchType.HAS && valueType == JsonValueType.STRING) {
-                        raw("$dbKey ilike ?", "%${filter.value}%")
-                    } else if (valueType == JsonValueType.NUMBER) {
-                        when (type) {
-                            SearchType.LT -> {
-                                raw("$dbKey < ?", "0")
-                            }
-
-                            SearchType.LE -> {
-                                raw("$dbKey <= ?", "0")
-                            }
-
-                            SearchType.GT -> {
-                                raw("$dbKey > ?", "0")
-                            }
-
-                            SearchType.GE -> {
-                                raw("$dbKey >= ?", "0")
-                            }
-
-                            else -> {
-                                logger.warn("Unknown search type $type for Numeric")
-                            }
-                        }
-                    } else {
-                        logger.warn("Unknown search type: $type")
+            val qp = if (type == SearchType.EQ) {
+                Pair("$dbKey = ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+            } else if (type == SearchType.HAS && valueType == JsonValueType.STRING) {
+                Pair("$dbKey ilike ?", Q(filter.jsonPath, valueType, entityName, "%${filter.value}%"))
+            } else if (valueType == JsonValueType.NUMBER) {
+                when (type) {
+                    SearchType.LT -> {
+                        Pair("$dbKey < ?", Q(filter.jsonPath, valueType, entityName, filter.value))
                     }
 
-                    endAnd()
+                    SearchType.LE -> {
+                        Pair("$dbKey <= ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                    }
 
+                    SearchType.GT -> {
+                        Pair("$dbKey > ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                    }
+
+                    SearchType.GE -> {
+                        Pair("$dbKey >= ?", Q(filter.jsonPath, valueType, entityName, filter.value))
+                    }
+
+                    else -> {
+                        logger.warn("unknown value type $type for $valueType")
+                        null
+                    }
                 }
-                endOr()
+            } else {
+                logger.warn("Unknown search type: $type")
+                null
             }
 
+            if (qp == null) {
+                null
+            } else {
+                "$qStart and ${qp.first}" to qp.second
+            }
+        }
 
+        if (queryAndParam.isEmpty()) {
+            return emptyList()
+        }
 
-        return query.select("uniqueIdentifier").findSingleAttributeList()
+        val finalQuery = queryAndParam.joinToString(separator = " INTERSECT ")
+
+        val q = AppContext.db.sqlQuery(finalQuery)
+        queryAndParam.forEachIndexed { index0, query ->
+            val index = index0 * 4
+            q.setParameter(index + 1, query.second.jsonPath)
+            q.setParameter(index + 2, query.second.entityName)
+            q.setParameter(index + 3, query.second.valueType)
+            q.setParameter(index + 4, query.second.value)
+        }
+        return q.findList()
+            .map {
+                it.getString("unique_identifier")
+            }
+
     }
 
 }
