@@ -5,15 +5,13 @@ import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
 import my.baas.models.ReportExecutionRequest
 import my.baas.models.ReportModel
-import my.baas.services.JobRunnerServiceHolder
+import my.baas.services.JobRunnerService
 import my.baas.services.ReportService
-import java.io.File
 import java.io.FileInputStream
 
 object ReportController {
 
     private val reportService = ReportService()
-    private val jobRunnerService = JobRunnerServiceHolder.instance
 
     fun create(ctx: Context) {
         val report = ctx.bodyAsClass(ReportModel::class.java)
@@ -92,7 +90,7 @@ object ReportController {
         val request = ctx.bodyAsClass(SqlValidationRequest::class.java)
 
         try {
-           
+
 
             //todo: validate SQL
 
@@ -128,7 +126,7 @@ object ReportController {
     fun cancelJob(ctx: Context) {
         val jobId = ctx.pathParam("jobId")
         val cancelled = reportService.cancelJob(jobId)
-        
+
         if (cancelled) {
             ctx.json(mapOf("message" to "Job cancelled successfully", "jobId" to jobId))
         } else {
@@ -140,23 +138,23 @@ object ReportController {
     fun getExecutionHistory(ctx: Context) {
         val reportId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid report ID")
-        
+
         val page = ctx.queryParam("page")?.toIntOrNull() ?: 1
         val pageSize = ctx.queryParam("pageSize")?.toIntOrNull() ?: 20
-        
+
         val history = reportService.getExecutionHistory(reportId, page, pageSize)
         ctx.json(history)
     }
 
     fun downloadResult(ctx: Context) {
         val jobId = ctx.pathParam("jobId")
-        
+
         val downloadInfo = reportService.getJobDownloadInfo(jobId)
         if (!downloadInfo.isAvailable) {
             throw NotFoundResponse("Result file not available")
         }
 
-        val file = jobRunnerService.downloadResultFile(jobId)
+        val file = JobRunnerService.downloadResultFile(jobId)
             ?: throw NotFoundResponse("Result file not found")
 
         try {
@@ -177,7 +175,7 @@ object ReportController {
             if (file.absolutePath.contains("temp")) {
                 file.delete()
             }
-            
+
         } catch (e: Exception) {
             throw BadRequestResponse("Failed to download file: ${e.message}")
         }

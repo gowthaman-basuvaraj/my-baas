@@ -11,6 +11,11 @@ import io.ebean.config.TenantMode
 import io.ebean.datasource.DataSourceConfig
 import my.baas.auth.CurrentTenantProvider
 import my.baas.auth.CurrentUserProvider
+import my.baas.models.ReportModel
+import my.baas.services.CompletionActionProcessor
+import my.baas.services.EmailProcessor
+import my.baas.services.S3UploadProcessor
+import my.baas.services.SftpUploadProcessor
 import net.cactusthorn.config.core.factory.ConfigFactory
 
 object AppContext {
@@ -49,6 +54,17 @@ object AppContext {
 
     val objectMapper: ObjectMapper by lazy {
         ObjectMapper().registerModule(KotlinModule.Builder().build())
+    }
+    val reportConfig: ReportConfig by lazy {
+        ReportConfig.fromAppConfig(appConfig)
+    }
+
+    val completionActionProcessors: Map<ReportModel.ActionType, CompletionActionProcessor<*>> by lazy {
+        mapOf(
+            ReportModel.ActionType.S3 to S3UploadProcessor(),
+            ReportModel.ActionType.SFTP to SftpUploadProcessor(),
+            ReportModel.ActionType.EMAIL to EmailProcessor(reportConfig.emailConfig)
+        )
     }
 
 }

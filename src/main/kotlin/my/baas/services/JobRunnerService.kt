@@ -1,23 +1,11 @@
 package my.baas.services
 
-import com.jcraft.jsch.ChannelSftp
-import com.jcraft.jsch.JSch
-import com.jcraft.jsch.SftpException
 import com.opencsv.CSVWriter
 import io.ebean.SqlQuery
 import io.minio.*
-import jakarta.activation.DataHandler
-import jakarta.activation.FileDataSource
-import jakarta.mail.Authenticator
-import jakarta.mail.Message
-import jakarta.mail.PasswordAuthentication
-import jakarta.mail.Transport
-import jakarta.mail.internet.InternetAddress
-import jakarta.mail.internet.MimeBodyPart
-import jakarta.mail.internet.MimeMessage
-import jakarta.mail.internet.MimeMultipart
 import my.baas.config.AppContext
-import my.baas.config.ReportConfig
+import my.baas.config.AppContext.reportConfig
+import my.baas.config.MinioConfig
 import my.baas.models.ReportExecutionLog
 import my.baas.models.ReportModel
 import my.baas.repositories.ReportExecutionRepository
@@ -32,7 +20,6 @@ import java.io.OutputStreamWriter
 import java.nio.file.Files
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -40,17 +27,16 @@ import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-class JobRunnerService(
+object JobRunnerService{
     private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl()
-) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val config = ReportConfig.fromAppConfig(AppContext.appConfig)
-    private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(config.maxConcurrentJobs)
+    private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(reportConfig.maxConcurrentJobs)
     private val minioClient: MinioClient? = initMinioClient()
+    private val minioConfig: MinioConfig? = reportConfig.minioConfig
 
     init {
         // Ensure local storage directory exists
-        Files.createDirectories(config.getLocalStoragePathAsPath())
+        Files.createDirectories(reportConfig.getLocalStoragePathAsPath())
 
         // Start job processor
         executor.scheduleWithFixedDelay(::processPendingJobs, 0, 5, TimeUnit.SECONDS)
@@ -58,19 +44,19 @@ class JobRunnerService(
         // Start cleanup task
         executor.scheduleWithFixedDelay(::cleanupOldResults, 1, 24, TimeUnit.HOURS)
 
-        logger.info("JobRunnerService initialized with ${config.maxConcurrentJobs} max concurrent jobs")
+        logger.info("JobRunnerService initialized with ${reportConfig.maxConcurrentJobs} max concurrent jobs")
     }
 
     private fun initMinioClient(): MinioClient? {
-        return if (config.enableMinioUpload && config.minioConfig != null) {
+        return if (reportConfig.enableMinioUpload && minioConfig != null) {
             try {
-                val client = MinioClient.builder().endpoint(config.minioConfig.endpoint)
-                    .credentials(config.minioConfig.accessKey, config.minioConfig.secretKey).build()
+                val client = MinioClient.builder().endpoint(minioConfig.endpoint)
+                    .credentials(minioConfig.accessKey, minioConfig.secretKey).build()
 
                 // Ensure bucket exists
-                if (!client.bucketExists(BucketExistsArgs.builder().bucket(config.minioConfig.bucketName).build())) {
-                    client.makeBucket(MakeBucketArgs.builder().bucket(config.minioConfig.bucketName).build())
-                    logger.info("Created MinIO bucket: ${config.minioConfig.bucketName}")
+                if (!client.bucketExists(BucketExistsArgs.builder().bucket(minioConfig.bucketName).build())) {
+                    client.makeBucket(MakeBucketArgs.builder().bucket(minioConfig.bucketName).build())
+                    logger.info("Created MinIO bucket: ${minioConfig.bucketName}")
                 }
 
                 client
@@ -84,7 +70,7 @@ class JobRunnerService(
     private fun processPendingJobs() {
         try {
             val runningJobs = executionRepository.findRunningJobs()
-            val availableSlots = config.maxConcurrentJobs - runningJobs.size
+            val availableSlots = reportConfig.maxConcurrentJobs - runningJobs.size
 
             if (availableSlots <= 0) {
                 return
@@ -130,7 +116,7 @@ class JobRunnerService(
             executionLog.storageLocation = ReportExecutionLog.StorageLocation.LOCAL
 
             // Upload to MinIO if configured
-            if (config.enableMinioUpload && config.minioConfig != null && minioClient != null) {
+            if (reportConfig.enableMinioUpload && minioConfig != null && minioClient != null) {
                 val (s3BucketName, s3ObjectKey) = uploadToMinio(executionLog, localFile)
                 executionLog.s3BucketName = s3BucketName
                 executionLog.s3ObjectKey = s3ObjectKey
@@ -164,7 +150,7 @@ class JobRunnerService(
         val fileExtension = executionLog.fileFormat.fileExtension()
         val fileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.$fileExtension"
         val zipFileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.zip"
-        val zipFile = File(config.getLocalStoragePathAsPath().toFile(), zipFileName)
+        val zipFile = File(reportConfig.getLocalStoragePathAsPath().toFile(), zipFileName)
 
         return ZipOutputStream(FileOutputStream(zipFile)).use { zipOutputStream ->
             zipOutputStream.putNextEntry(ZipEntry(fileName))
@@ -321,22 +307,22 @@ class JobRunnerService(
     }
 
     private fun uploadToMinio(executionLog: ReportExecutionLog, file: File): Pair<String?, String?> {
-        if (minioClient == null || config.minioConfig == null) return null to null
+        if (minioClient == null || minioConfig == null) return null to null
 
         return try {
             val objectKey =
-                "${config.minioConfig.prefix}${executionLog.tenant.domain}/${executionLog.jobId}/${file.name}"
+                "${minioConfig.prefix}${executionLog.tenant.domain}/${executionLog.jobId}/${file.name}"
 
             val putObjectArgs = PutObjectArgs.builder()
-                .bucket(config.minioConfig.bucketName)
+                .bucket(minioConfig.bucketName)
                 .`object`(objectKey)
                 .contentType(executionLog.fileFormat.getContentType()).build()
 
             minioClient.putObject(putObjectArgs)
 
-            logger.info("File uploaded to MinIO: ${config.minioConfig.endpoint}/${config.minioConfig.bucketName}/$objectKey")
+            logger.info("File uploaded to MinIO: ${minioConfig.endpoint}/${minioConfig.bucketName}/$objectKey")
 
-            config.minioConfig.bucketName to objectKey
+            minioConfig.bucketName to objectKey
         } catch (e: Exception) {
             logger.error("Failed to upload file to MinIO for job: ${executionLog.jobId}", e)
             null to null
@@ -348,198 +334,16 @@ class JobRunnerService(
     private fun executeCompletionActions(executionLog: ReportExecutionLog) {
         executionLog.report.completionActions.forEach { action ->
             try {
-                when (action) {
-                    is ReportModel.CompletionAction.S3Upload -> {
-                        // Custom MinIO/S3 upload with user's credentials
-                        uploadToCustomMinio(action, executionLog)
-                    }
-
-                    is ReportModel.CompletionAction.SftpUpload -> {
-                        uploadToSftp(action, executionLog)
-                    }
-
-                    is ReportModel.CompletionAction.Email -> {
-                        sendEmail(action, executionLog)
-                    }
+                val processor = AppContext.completionActionProcessors[action.actionType]
+                if (processor != null) {
+                    @Suppress("UNCHECKED_CAST")
+                    (processor as CompletionActionProcessor<ReportModel.CompletionAction>).process(action, executionLog)
+                } else {
+                    logger.warn("No processor found for action type: ${action.actionType}")
                 }
             } catch (e: Exception) {
-                logger.error("Error executing completion action for job: ${executionLog.jobId}", e)
+                logger.error("Error executing completion action ${action.actionType} for job: ${executionLog.jobId}", e)
             }
-        }
-    }
-
-    private fun uploadToCustomMinio(action: ReportModel.CompletionAction.S3Upload, executionLog: ReportExecutionLog) {
-        try {
-            // For S3Upload action, we'll assume it's MinIO-compatible
-            // The endpoint should be provided in the region field or use a default MinIO endpoint
-            val endpoint = if (action.region?.startsWith("http") == true) {
-                action.region
-            } else {
-                "http://localhost:9000" // Default MinIO endpoint
-            }
-
-            val customMinioClient =
-                MinioClient.builder().endpoint(endpoint).credentials(action.accessKey, action.secretKey).build()
-
-            val localFile = File(executionLog.localFilePath!!)
-            val objectKey = action.filePath ?: "${executionLog.jobId}/${localFile.name}"
-
-            // Ensure bucket exists
-            if (!customMinioClient.bucketExists(BucketExistsArgs.builder().bucket(action.bucketName).build())) {
-                customMinioClient.makeBucket(MakeBucketArgs.builder().bucket(action.bucketName).build())
-            }
-
-            val putObjectArgs = PutObjectArgs.builder().bucket(action.bucketName).`object`(objectKey)
-                .contentType(executionLog.fileFormat.getContentType()).build()
-
-            customMinioClient.putObject(putObjectArgs)
-
-            logger.info("File uploaded to custom MinIO: $endpoint/${action.bucketName}/$objectKey")
-
-        } catch (e: Exception) {
-            logger.error("Failed to upload to custom MinIO for job: ${executionLog.jobId}", e)
-        }
-    }
-
-    private fun uploadToSftp(action: ReportModel.CompletionAction.SftpUpload, executionLog: ReportExecutionLog) {
-        try {
-            val localFile = File(executionLog.localFilePath!!)
-
-            val jsch = JSch()
-
-            // Setup SSH key if provided
-            if (!action.sshKey.isNullOrBlank()) {
-                jsch.addIdentity("temp_key", action.sshKey.toByteArray(), null, null)
-            }
-
-            val session = jsch.getSession(action.username, action.host, action.port)
-
-            // Set password if provided
-            if (!action.password.isNullOrBlank()) {
-                session.setPassword(action.password)
-            }
-
-            // Skip host key verification
-            val config = Properties()
-            config["StrictHostKeyChecking"] = "no"
-            session.setConfig(config)
-
-            session.connect()
-
-            val channelSftp = session.openChannel("sftp") as ChannelSftp
-            channelSftp.connect()
-
-            // Create remote directories if they don't exist
-            val remotePath = action.remotePath.trimEnd('/')
-            val remoteFile = "$remotePath/${localFile.name}"
-
-            try {
-                // Try to create directory path
-                val dirs = remotePath.split("/").filter { it.isNotBlank() }
-                var currentPath = ""
-                for (dir in dirs) {
-                    currentPath = if (currentPath.isEmpty()) "/$dir" else "$currentPath/$dir"
-                    try {
-                        channelSftp.mkdir(currentPath)
-                    } catch (e: SftpException) {
-                        // Directory might already exist, continue
-                    }
-                }
-            } catch (e: Exception) {
-                logger.warn("Could not create remote directories: ${e.message}")
-            }
-
-            // Upload the file
-            channelSftp.put(localFile.absolutePath, remoteFile)
-
-            channelSftp.disconnect()
-            session.disconnect()
-
-            logger.info("File uploaded to SFTP: ${action.host}:$remoteFile")
-
-        } catch (e: Exception) {
-            logger.error("Failed to upload to SFTP for job: ${executionLog.jobId}", e)
-            throw e
-        }
-    }
-
-    private fun sendEmail(action: ReportModel.CompletionAction.Email, executionLog: ReportExecutionLog) {
-        if (config.emailConfig == null) {
-            logger.warn("Email configuration not available, skipping email for job: ${executionLog.jobId}")
-            return
-        }
-
-        try {
-            val properties = Properties().apply {
-                put("mail.smtp.host", config.emailConfig.smtpHost)
-                put("mail.smtp.port", config.emailConfig.smtpPort.toString())
-                put("mail.smtp.auth", config.emailConfig.auth.toString())
-                put("mail.smtp.starttls.enable", config.emailConfig.startTlsEnable.toString())
-            }
-
-            val session =
-                if (config.emailConfig.auth && config.emailConfig.username != null && config.emailConfig.password != null) {
-                    jakarta.mail.Session.getInstance(properties, object : Authenticator() {
-                        override fun getPasswordAuthentication(): PasswordAuthentication {
-                            return PasswordAuthentication(config.emailConfig.username, config.emailConfig.password)
-                        }
-                    })
-                } else {
-                    jakarta.mail.Session.getInstance(properties)
-                }
-
-            val message = MimeMessage(session).apply {
-                setFrom(InternetAddress(config.emailConfig.fromAddress, config.emailConfig.fromName))
-
-                // Set recipients
-                setRecipients(Message.RecipientType.TO, action.to.joinToString(","))
-                if (action.cc.isNotEmpty()) {
-                    setRecipients(Message.RecipientType.CC, action.cc.joinToString(","))
-                }
-                if (action.bcc.isNotEmpty()) {
-                    setRecipients(Message.RecipientType.BCC, action.bcc.joinToString(","))
-                }
-
-                subject = action.subject
-
-                if (action.attachFile && executionLog.localFilePath != null) {
-                    // Create multipart message with attachment
-                    val multipart = MimeMultipart()
-
-                    // Add text part
-                    val textPart = MimeBodyPart().apply {
-                        setText(
-                            action.body
-                                ?: "Report execution completed successfully.\n\nReport: ${executionLog.report.name}\nRows: ${executionLog.rowCount}\nExecution Time: ${executionLog.executionTimeMs}ms"
-                        )
-                    }
-                    multipart.addBodyPart(textPart)
-
-                    // Add attachment
-                    val attachmentPart = MimeBodyPart().apply {
-                        val localFile = File(executionLog.localFilePath!!)
-                        dataHandler = DataHandler(FileDataSource(localFile))
-                        fileName = localFile.name
-                    }
-                    multipart.addBodyPart(attachmentPart)
-
-                    setContent(multipart)
-                } else {
-                    // Simple text message
-                    setText(
-                        action.body
-                            ?: "Report execution completed successfully.\n\nReport: ${executionLog.report.name}\nRows: ${executionLog.rowCount}\nExecution Time: ${executionLog.executionTimeMs}ms"
-                    )
-                }
-            }
-
-            Transport.send(message)
-
-            logger.info("Email sent successfully for job: ${executionLog.jobId} to ${action.to.joinToString()}")
-
-        } catch (e: Exception) {
-            logger.error("Failed to send email for job: ${executionLog.jobId}", e)
-            throw e
         }
     }
 
@@ -565,7 +369,7 @@ class JobRunnerService(
                 try {
                     // Get tenant-specific retention period
                     val tenant = AppContext.db.find(my.baas.models.TenantModel::class.java, tenantId)
-                    val retentionDays = tenant?.config?.jobRetentionDays ?: config.resultRetentionDays
+                    val retentionDays = tenant?.config?.jobRetentionDays ?: reportConfig.resultRetentionDays
 
                     //let's give leeway of 2 days to account for the timezone differences
                     val cutoffDate = Instant.now().minusSeconds((retentionDays + 2).toLong() * 24 * 60 * 60)
@@ -692,8 +496,4 @@ class JobRunnerService(
             return null
         }
     }
-}
-
-object JobRunnerServiceHolder {
-    val instance: JobRunnerService by lazy { JobRunnerService() }
 }
