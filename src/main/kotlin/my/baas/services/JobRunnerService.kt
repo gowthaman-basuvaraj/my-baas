@@ -1,30 +1,30 @@
 package my.baas.services
 
 import com.opencsv.CSVWriter
+import io.ebean.SqlQuery
+import io.minio.*
 import my.baas.config.AppContext
 import my.baas.config.ReportConfig
 import my.baas.models.ReportExecutionLog
+import my.baas.models.ReportModel
 import my.baas.repositories.ReportExecutionRepository
 import my.baas.repositories.ReportExecutionRepositoryImpl
-import my.baas.services.TenantLimitService
+import org.apache.poi.hssf.usermodel.HSSFWorkbook
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.slf4j.LoggerFactory
-import io.minio.MinioClient
-import io.minio.PutObjectArgs
-import io.minio.GetObjectArgs
-import io.minio.MakeBucketArgs
-import io.minio.BucketExistsArgs
-import io.minio.RemoveObjectArgs
-import my.baas.models.ReportModel
 import java.io.File
-import java.io.FileWriter
+import java.io.FileOutputStream
+import java.io.OutputStream
+import java.io.OutputStreamWriter
 import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class JobRunnerService(
     private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl()
@@ -33,34 +33,32 @@ class JobRunnerService(
     private val config = ReportConfig.fromAppConfig(AppContext.appConfig)
     private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(config.maxConcurrentJobs)
     private val minioClient: MinioClient? = initMinioClient()
-    
+
     init {
         // Ensure local storage directory exists
         Files.createDirectories(config.getLocalStoragePathAsPath())
-        
+
         // Start job processor
         executor.scheduleWithFixedDelay(::processPendingJobs, 0, 5, TimeUnit.SECONDS)
-        
+
         // Start cleanup task
         executor.scheduleWithFixedDelay(::cleanupOldResults, 1, 24, TimeUnit.HOURS)
-        
+
         logger.info("JobRunnerService initialized with ${config.maxConcurrentJobs} max concurrent jobs")
     }
 
     private fun initMinioClient(): MinioClient? {
         return if (config.enableMinioUpload && config.minioConfig != null) {
             try {
-                val client = MinioClient.builder()
-                    .endpoint(config.minioConfig.endpoint)
-                    .credentials(config.minioConfig.accessKey, config.minioConfig.secretKey)
-                    .build()
-                
+                val client = MinioClient.builder().endpoint(config.minioConfig.endpoint)
+                    .credentials(config.minioConfig.accessKey, config.minioConfig.secretKey).build()
+
                 // Ensure bucket exists
                 if (!client.bucketExists(BucketExistsArgs.builder().bucket(config.minioConfig.bucketName).build())) {
                     client.makeBucket(MakeBucketArgs.builder().bucket(config.minioConfig.bucketName).build())
                     logger.info("Created MinIO bucket: ${config.minioConfig.bucketName}")
                 }
-                
+
                 client
             } catch (e: Exception) {
                 logger.error("Failed to initialize MinIO client", e)
@@ -73,18 +71,16 @@ class JobRunnerService(
         try {
             val runningJobs = executionRepository.findRunningJobs()
             val availableSlots = config.maxConcurrentJobs - runningJobs.size
-            
+
             if (availableSlots <= 0) {
                 return
             }
 
-            val pendingJobs = executionRepository.findPendingJobs()
-                .take(availableSlots)
+            val pendingJobs = executionRepository.findPendingJobs().take(availableSlots)
 
             pendingJobs.forEach { job ->
                 CompletableFuture.runAsync(
-                    { processJob(job) },
-                    executor
+                    { processJob(job) }, executor
                 )
             }
         } catch (e: Exception) {
@@ -94,7 +90,7 @@ class JobRunnerService(
 
     private fun processJob(executionLog: ReportExecutionLog) {
         logger.info("Starting job execution: ${executionLog.jobId}")
-        
+
         try {
             // Update status to running
             executionLog.status = ReportExecutionLog.JobStatus.RUNNING
@@ -106,157 +102,262 @@ class JobRunnerService(
             // Get tenant-specific max execution time
             val maxExecutionTimeMs = executionLog.tenant.config.maxReportExecutionTimeMinutes * 60 * 1000
 
-            // Execute the SQL query with timeout check
-            val results = executeSqlQueryWithTimeout(executionLog.report.sql, maxExecutionTimeMs)
+            // Update execution log to use report's file format
+            executionLog.fileFormat = executionLog.report.fileFormat
+
+            // Execute SQL query and generate file in streaming manner
+            val (rowCount, localFile) = generateResultFileStreamingly(executionLog, maxExecutionTimeMs)
             val executionTime = System.currentTimeMillis() - startTime
 
-            // Generate result file
-            val localFile = generateResultFile(executionLog, results)
-            val fileSize = localFile.length()
-
-            // Update execution log with local file info
+            executionLog.rowCount = rowCount
             executionLog.localFilePath = localFile.absolutePath
-            executionLog.fileSizeBytes = fileSize
-            executionLog.rowCount = results.size
+            executionLog.fileSizeBytes = localFile.length()
             executionLog.executionTimeMs = executionTime
             executionLog.storageLocation = ReportExecutionLog.StorageLocation.LOCAL
 
             // Upload to MinIO if configured
             if (config.enableMinioUpload && config.minioConfig != null && minioClient != null) {
-                uploadToMinio(executionLog, localFile)
+                val (s3BucketName, s3ObjectKey) = uploadToMinio(executionLog, localFile)
+                executionLog.s3BucketName = s3BucketName
+                executionLog.s3ObjectKey = s3ObjectKey
             }
 
-            // Execute completion actions
-            executeCompletionActions(executionLog, results)
+            // Execute completion actions (note: we can't pass results anymore due to streaming)
+            executeCompletionActions(executionLog)
 
             // Mark as completed
             executionLog.status = ReportExecutionLog.JobStatus.COMPLETED
             executionLog.completedAt = Instant.now()
             executionRepository.update(executionLog)
 
-            logger.info("Job completed successfully: ${executionLog.jobId}, rows: ${results.size}, time: ${executionTime}ms")
+            logger.info("Job completed successfully: ${executionLog.jobId}, rows: ${executionLog.rowCount}, time: ${executionTime}ms")
 
         } catch (e: Exception) {
             logger.error("Job execution failed: ${executionLog.jobId}", e)
-            
+
             executionLog.status = ReportExecutionLog.JobStatus.FAILED
             executionLog.completedAt = Instant.now()
             executionLog.errorMessage = e.message ?: "Unknown error occurred"
             executionRepository.update(executionLog)
         }
     }
-    
-    private fun executeSqlQueryWithTimeout(sql: String, maxExecutionTimeMs: Long): List<Map<String, Any?>> {
-        val results = mutableListOf<Map<String, Any?>>()
-        
-        //todo: set statement_timeout to 60000; commit;
-        val sqlQuery = AppContext.db.sqlQuery(sql)
 
-        sqlQuery.findList().forEach { sqlRow ->
-
-            val row = mutableMapOf<String, Any?>()
-            sqlRow.keys().forEach { columnName ->
-                row[columnName] = sqlRow.get(columnName)
-            }
-            results.add(row)
-        }
-        
-        return results
-    }
-
-    private fun generateResultFile(executionLog: ReportExecutionLog, results: List<Map<String, Any?>>): File {
+    private fun generateResultFileStreamingly(
+        executionLog: ReportExecutionLog,
+        maxExecutionTimeMs: Long
+    ): Pair<Int, File> {
         val timestamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(Instant.now())
-        val fileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.${executionLog.fileFormat.lowercase()}"
-        val file = File(config.getLocalStoragePathAsPath().toFile(), fileName)
-
-        when (executionLog.fileFormat.uppercase()) {
-            "CSV" -> generateCsvFile(file, results)
-            "JSON" -> generateJsonFile(file, results)
-            else -> generateCsvFile(file, results) // Default to CSV
+        val fileExtension = when (executionLog.report.fileFormat) {
+            ReportModel.FileFormat.CSV -> "csv"
+            ReportModel.FileFormat.JSON -> "json"
+            ReportModel.FileFormat.XLS -> "xls"
+            ReportModel.FileFormat.XLSX -> "xlsx"
         }
+        val fileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.$fileExtension"
+        val zipFileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.zip"
+        val zipFile = File(config.getLocalStoragePathAsPath().toFile(), zipFileName)
 
-        return file
+        return ZipOutputStream(FileOutputStream(zipFile)).use { zipOutputStream ->
+            zipOutputStream.putNextEntry(ZipEntry(fileName))
+            val sqlQuery = AppContext.db.sqlQuery(
+                """
+                        SET statement_timeout TO '${maxExecutionTimeMs / (60 * 1000)}min';
+                        ${executionLog.report.sql}
+                    """.trimIndent()
+            )
+            when (executionLog.report.fileFormat) {
+                ReportModel.FileFormat.CSV -> generateCsvFileStreamingly(zipOutputStream, sqlQuery)
+                ReportModel.FileFormat.JSON -> generateJsonFileStreamingly(zipOutputStream, sqlQuery)
+                ReportModel.FileFormat.XLS -> generateExcelFileStreamingly(
+                    zipOutputStream,
+                    sqlQuery,
+                    false,
+                    executionLog.report.name
+                )
+
+                ReportModel.FileFormat.XLSX -> generateExcelFileStreamingly(
+                    zipOutputStream,
+                    sqlQuery,
+                    true,
+                    executionLog.report.name
+                )
+            }
+
+        } to zipFile
+
+
     }
 
-    private fun generateCsvFile(file: File, results: List<Map<String, Any?>>) {
-        if (results.isEmpty()) {
-            file.writeText("")
-            return
-        }
+    private fun generateCsvFileStreamingly(outputStream: OutputStream, sqlQuery: SqlQuery): Int {
+        var rowCount = 0
+        var headers: List<String>? = null
 
-        FileWriter(file).use { writer ->
+        OutputStreamWriter(outputStream).use { writer ->
             CSVWriter(writer).use { csvWriter ->
-                // Write header
-                val headers = results.first().keys.toTypedArray()
-                csvWriter.writeNext(headers)
 
-                // Write data rows
-                results.forEach { row ->
+                sqlQuery.findEach { sqlRow ->
+                    if (headers == null) {
+                        // Write header on first row
+                        headers = sqlRow.keys().asSequence().toList()
+                        csvWriter.writeNext(headers.toTypedArray())
+                    }
+
+                    // Write data row
                     val values = headers.map { header ->
-                        row[header]?.toString() ?: ""
+                        sqlRow.get(header)?.toString() ?: ""
                     }.toTypedArray()
                     csvWriter.writeNext(values)
+                    rowCount++
                 }
             }
         }
+        return rowCount - 1 //exclude header
     }
 
-    private fun generateJsonFile(file: File, results: List<Map<String, Any?>>) {
-        val json = AppContext.objectMapper.writeValueAsString(
-            mapOf(
-                "data" to results,
-                "count" to results.size,
-                "generatedAt" to Instant.now().toString()
-            )
-        )
-        file.writeText(json)
+    private fun generateJsonFileStreamingly(outputStream: OutputStream, sqlQuery: SqlQuery): Int {
+        var rowCount = 0
+
+        val jsonGenerator = AppContext.objectMapper.factory.createGenerator(outputStream)
+
+        jsonGenerator.writeStartObject()
+        jsonGenerator.writeStringField("generatedAt", Instant.now().toString())
+        jsonGenerator.writeArrayFieldStart("data")
+
+        sqlQuery.findEach { sqlRow ->
+            jsonGenerator.writeStartObject()
+            sqlRow.keys().forEach { columnName ->
+                when (val value = sqlRow.get(columnName)) {
+                    is String -> jsonGenerator.writeStringField(columnName, value)
+                    is Number -> jsonGenerator.writeNumberField(columnName, value.toDouble())
+                    is Boolean -> jsonGenerator.writeBooleanField(columnName, value)
+                    //todo: handle date/time
+                    null -> jsonGenerator.writeNullField(columnName)
+                    else -> jsonGenerator.writeStringField(columnName, value.toString())
+                }
+            }
+            jsonGenerator.writeEndObject()
+            rowCount++
+        }
+
+        jsonGenerator.writeEndArray()
+        jsonGenerator.writeNumberField("count", rowCount)
+        jsonGenerator.writeEndObject()
+        jsonGenerator.close()
+
+        return rowCount
     }
 
-    private fun uploadToMinio(executionLog: ReportExecutionLog, file: File) {
-        if (minioClient == null || config.minioConfig == null) return
+    private fun generateExcelFileStreamingly(
+        outputStream: OutputStream,
+        sqlQuery: SqlQuery,
+        useXlsx: Boolean,
+        reportName: String
+    ): Int {
+        var rowIndex = 0
+        var headers: List<String>? = null
+        (if (useXlsx) XSSFWorkbook() else HSSFWorkbook())
+            .use { workbook ->
+                val sheet = workbook.createSheet(reportName)
+                val style = workbook.createCellStyle().apply {
+                    dataFormat = workbook.createDataFormat().getFormat("######.###")
+                }
+                val styleInt = workbook.createCellStyle().apply {
+                    dataFormat = workbook.createDataFormat().getFormat("######")
+                }
 
-        try {
-            val objectKey = "${config.minioConfig.prefix}${executionLog.tenant.domain}/${executionLog.jobId}/${file.name}"
-            
+                sqlQuery.findEach { sqlRow ->
+                    if (headers == null) {
+                        // Create header row
+                        headers = sqlRow.keys().asSequence().toList()
+                        val headerRow = sheet.createRow(rowIndex++)
+                        headers.forEachIndexed { index, header ->
+                            headerRow.createCell(index).setCellValue(header)
+                        }
+                    }
+
+                    // Create data row
+                    val dataRow = sheet.createRow(rowIndex++)
+                    headers.forEachIndexed { index, header ->
+                        val cell = dataRow.createCell(index)
+                        when (val value = sqlRow.get(header)) {
+                            is String -> cell.setCellValue(value)
+                            is Number -> cell.apply {
+                                setCellValue(value.toDouble())
+                                if (value is Int) {
+                                    cellStyle = styleInt
+                                } else {
+                                    cellStyle = style
+                                }
+                            }
+                            //todo: handle date? and time?
+                            is Boolean -> cell.setCellValue(value)
+                            null -> cell.setCellValue("")
+                            else -> cell.setCellValue(value.toString())
+                        }
+                    }
+                }
+
+                // Auto-size columns
+                headers?.forEachIndexed { index, _ ->
+                    sheet.autoSizeColumn(index)
+                }
+
+
+                workbook.write(outputStream)
+
+
+            }
+
+        return rowIndex - 1 //exclude header
+    }
+
+    private fun uploadToMinio(executionLog: ReportExecutionLog, file: File): Pair<String?, String?> {
+        if (minioClient == null || config.minioConfig == null) return null to null
+
+        return try {
+            val objectKey =
+                "${config.minioConfig.prefix}${executionLog.tenant.domain}/${executionLog.jobId}/${file.name}"
+
             val putObjectArgs = PutObjectArgs.builder()
                 .bucket(config.minioConfig.bucketName)
                 .`object`(objectKey)
-
-                .contentType(getContentType(executionLog.fileFormat))
-                .build()
+                .contentType(getContentType(executionLog.fileFormat)).build()
 
             minioClient.putObject(putObjectArgs)
 
-            executionLog.s3BucketName = config.minioConfig.bucketName
-            executionLog.s3ObjectKey = objectKey
-
             logger.info("File uploaded to MinIO: ${config.minioConfig.endpoint}/${config.minioConfig.bucketName}/$objectKey")
 
+            config.minioConfig.bucketName to objectKey
         } catch (e: Exception) {
             logger.error("Failed to upload file to MinIO for job: ${executionLog.jobId}", e)
+            null to null
+        }
+
+    }
+
+    private fun getContentType(fileFormat: ReportModel.FileFormat): String {
+        return when (fileFormat) {
+            ReportModel.FileFormat.CSV -> "text/csv"
+            ReportModel.FileFormat.JSON -> "application/json"
+            ReportModel.FileFormat.XLS -> "application/vnd.ms-excel"
+            ReportModel.FileFormat.XLSX -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         }
     }
 
-    private fun getContentType(fileFormat: String): String {
-        return when (fileFormat.uppercase()) {
-            "CSV" -> "text/csv"
-            "JSON" -> "application/json"
-            else -> "application/octet-stream"
-        }
-    }
-
-    private fun executeCompletionActions(executionLog: ReportExecutionLog, results: List<Map<String, Any?>>) {
+    private fun executeCompletionActions(executionLog: ReportExecutionLog) {
         executionLog.report.completionActions.forEach { action ->
             try {
                 when (action) {
                     is ReportModel.CompletionAction.S3Upload -> {
                         // Custom MinIO/S3 upload with user's credentials
-                        uploadToCustomMinio(action, executionLog, results)
+                        uploadToCustomMinio(action, executionLog)
                     }
+
                     is ReportModel.CompletionAction.SftpUpload -> {
                         // TODO: Implement SFTP upload
                         logger.info("SFTP upload not yet implemented for job: ${executionLog.jobId}")
                     }
+
                     is ReportModel.CompletionAction.Email -> {
                         // TODO: Implement email sending
                         logger.info("Email sending not yet implemented for job: ${executionLog.jobId}")
@@ -268,7 +369,7 @@ class JobRunnerService(
         }
     }
 
-    private fun uploadToCustomMinio(action: ReportModel.CompletionAction.S3Upload, executionLog: ReportExecutionLog, results: List<Map<String, Any?>>) {
+    private fun uploadToCustomMinio(action: ReportModel.CompletionAction.S3Upload, executionLog: ReportExecutionLog) {
         try {
             // For S3Upload action, we'll assume it's MinIO-compatible
             // The endpoint should be provided in the region field or use a default MinIO endpoint
@@ -277,11 +378,9 @@ class JobRunnerService(
             } else {
                 "http://localhost:9000" // Default MinIO endpoint
             }
-            
-            val customMinioClient = MinioClient.builder()
-                .endpoint(endpoint)
-                .credentials(action.accessKey, action.secretKey)
-                .build()
+
+            val customMinioClient =
+                MinioClient.builder().endpoint(endpoint).credentials(action.accessKey, action.secretKey).build()
 
             val localFile = File(executionLog.localFilePath!!)
             val objectKey = action.filePath ?: "${executionLog.jobId}/${localFile.name}"
@@ -291,11 +390,8 @@ class JobRunnerService(
                 customMinioClient.makeBucket(MakeBucketArgs.builder().bucket(action.bucketName).build())
             }
 
-            val putObjectArgs = PutObjectArgs.builder()
-                .bucket(action.bucketName)
-                .`object`(objectKey)
-                .contentType(getContentType(executionLog.fileFormat))
-                .build()
+            val putObjectArgs = PutObjectArgs.builder().bucket(action.bucketName).`object`(objectKey)
+                .contentType(getContentType(executionLog.fileFormat)).build()
 
             customMinioClient.putObject(putObjectArgs)
 
@@ -310,11 +406,11 @@ class JobRunnerService(
         try {
             // Group jobs by tenant to apply their specific retention periods
             val tenantJobs = mutableMapOf<Long, MutableList<ReportExecutionLog>>()
-            
+
             // Get all completed jobs
-            val allCompletedJobs = AppContext.db.find(ReportExecutionLog::class.java)
-                .where()
-                .`in`("status", ReportExecutionLog.JobStatus.COMPLETED, ReportExecutionLog.JobStatus.FAILED)
+            val allCompletedJobs = AppContext.db.find(ReportExecutionLog::class.java).where()
+                .`in`("status", ReportExecutionLog.JobStatus.COMPLETED) //only completed jobs
+                .ne("storageLocation", ReportExecutionLog.StorageLocation.NONE) //clean till this reaches none
                 .findList()
 
             // Group by tenant
@@ -323,7 +419,7 @@ class JobRunnerService(
             }
 
             var totalCleaned = 0
-            
+
             tenantJobs.forEach { (tenantId, jobs) ->
                 try {
                     // Get tenant-specific retention period
@@ -332,7 +428,7 @@ class JobRunnerService(
 
                     //let's give leeway of 2 days to account for the timezone differences
                     val cutoffDate = Instant.now().minusSeconds((retentionDays + 2).toLong() * 24 * 60 * 60)
-                    val oldJobs = jobs.filter { job -> 
+                    val oldJobs = jobs.filter { job ->
                         job.completedAt != null && job.completedAt!!.isBefore(cutoffDate)
                     }
 
@@ -340,26 +436,28 @@ class JobRunnerService(
                     oldJobs.forEach { job ->
                         try {
                             // Only delete S3 files for jobs past cutoff date
-                            if (job.storageLocation == ReportExecutionLog.StorageLocation.S3 || 
-                                job.storageLocation == ReportExecutionLog.StorageLocation.BOTH) {
-                                deleteFromMinio(job)
-                                job.s3BucketName = null
-                                job.s3ObjectKey = null
+                            if (job.storageLocation == ReportExecutionLog.StorageLocation.S3 || job.storageLocation == ReportExecutionLog.StorageLocation.BOTH) {
+                                val deleted = deleteFromMinio(job)
+                                if (deleted) {
+                                    //only if delete succeeded then we shall make it null, else it'll be dnagling records
+                                    job.s3BucketName = null
+                                    job.s3ObjectKey = null
 
-                                executionRepository.update(job)
-                                totalCleaned++
+                                    executionRepository.update(job)
+                                    totalCleaned++
+                                }
                             }
 
                         } catch (e: Exception) {
                             logger.error("Error cleaning up job: ${job.jobId}", e)
                         }
                     }
-                    
+
                     // Always delete local files if S3 version exists (regardless of cutoff date)
-                    val jobsWithBothStorage = jobs.filter { job -> 
+                    val jobsWithBothStorage = jobs.filter { job ->
                         job.storageLocation == ReportExecutionLog.StorageLocation.BOTH
                     }
-                    
+
                     jobsWithBothStorage.forEach { job ->
                         try {
                             job.localFilePath?.let { path ->
@@ -388,24 +486,23 @@ class JobRunnerService(
             logger.error("Error during cleanup process", e)
         }
     }
-    
-    private fun deleteFromMinio(executionLog: ReportExecutionLog) {
-        if (minioClient == null || executionLog.s3ObjectKey == null || executionLog.s3BucketName == null) {
-            return
+
+    private fun deleteFromMinio(executionLog: ReportExecutionLog): Boolean {
+        if (minioClient == null) {
+            //if we have an uploaded file, but no minio client, then deleted is false
+            return !(executionLog.s3ObjectKey != null && executionLog.s3BucketName != null)
         }
 
-        try {
+        return try {
             minioClient.removeObject(
-                RemoveObjectArgs.builder()
-                    .bucket(executionLog.s3BucketName)
-                    .`object`(executionLog.s3ObjectKey)
-                    .build()
+                RemoveObjectArgs.builder().bucket(executionLog.s3BucketName).`object`(executionLog.s3ObjectKey).build()
             )
-            
-            logger.debug("Deleted old MinIO file: ${executionLog.s3BucketName}/${executionLog.s3ObjectKey}")
 
+            logger.debug("Deleted old MinIO file: ${executionLog.s3BucketName}/${executionLog.s3ObjectKey}")
+            true
         } catch (e: Exception) {
             logger.warn("Failed to delete old MinIO file for job: ${executionLog.jobId}", e)
+            false
         }
     }
 
@@ -416,14 +513,16 @@ class JobRunnerService(
             ReportExecutionLog.StorageLocation.LOCAL -> {
                 executionLog.localFilePath?.let { File(it) }?.takeIf { it.exists() }
             }
+
             ReportExecutionLog.StorageLocation.S3 -> {
                 downloadFromMinio(executionLog)
             }
+
             ReportExecutionLog.StorageLocation.BOTH -> {
                 // Prefer local file if available
-                executionLog.localFilePath?.let { File(it) }?.takeIf { it.exists() }
-                    ?: downloadFromMinio(executionLog)
+                executionLog.localFilePath?.let { File(it) }?.takeIf { it.exists() } ?: downloadFromMinio(executionLog)
             }
+
             ReportExecutionLog.StorageLocation.NONE -> null
         }
     }
@@ -435,11 +534,9 @@ class JobRunnerService(
 
         try {
             val tempFile = File.createTempFile("report_${executionLog.jobId}", ".tmp")
-            
-            val getObjectArgs = GetObjectArgs.builder()
-                .bucket(executionLog.s3BucketName)
-                .`object`(executionLog.s3ObjectKey)
-                .build()
+
+            val getObjectArgs =
+                GetObjectArgs.builder().bucket(executionLog.s3BucketName).`object`(executionLog.s3ObjectKey).build()
 
             minioClient.getObject(getObjectArgs).use { inputStream ->
                 tempFile.outputStream().use { outputStream ->
@@ -453,19 +550,6 @@ class JobRunnerService(
             logger.error("Failed to download file from MinIO for job: ${executionLog.jobId}", e)
             return null
         }
-    }
-
-    fun shutdown() {
-        logger.info("Shutting down JobRunnerService...")
-        executor.shutdown()
-        try {
-            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
-                executor.shutdownNow()
-            }
-        } catch (e: InterruptedException) {
-            executor.shutdownNow()
-        }
-        // MinioClient doesn't need explicit closing
     }
 }
 

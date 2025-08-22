@@ -8,7 +8,7 @@ import java.time.Instant
 @Entity
 @Index(name = "report_execution_job_id_idx", columnNames = ["job_id"], unique = true)
 @Index(name = "report_execution_report_id_idx", columnNames = ["report_id"])
-@Index(name = "report_execution_status_idx", columnNames = ["status"])
+@Index(name = "report_execution_status_idx", columnNames = ["status", "storage_location"])
 class ReportExecutionLog : BaseTenantModel() {
 
     lateinit var jobId: String
@@ -38,7 +38,8 @@ class ReportExecutionLog : BaseTenantModel() {
 
     var fileSizeBytes: Long? = null
 
-    var fileFormat: String = "CSV"
+    @Enumerated(EnumType.STRING)
+    var fileFormat: ReportModel.FileFormat = ReportModel.FileFormat.JSON
 
     @Enumerated(EnumType.STRING)
     var storageLocation: StorageLocation = StorageLocation.NONE

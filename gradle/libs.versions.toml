@@ -19,6 +19,7 @@ delight-nashorn-sandbox = "0.5.3"
 jedis = "5.1.0"
 minio = "8.5.12"
 opencsv = "5.9"
+apache-poi = "5.2.5"
 
 [libraries]
 javalin = { module = "io.javalin:javalin", version.ref = "javalin" }
@@ -49,6 +50,10 @@ minio = { module = "io.minio:minio", version.ref = "minio" }
 
 # CSV generation
 opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
+
+# Excel generation
+apache-poi = { module = "org.apache.poi:poi", version.ref = "apache-poi" }
+apache-poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "apache-poi" }
 
 
 

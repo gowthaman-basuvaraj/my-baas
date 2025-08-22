@@ -27,10 +27,18 @@ class ReportModel : BaseTenantModel() {
 
     var isActive: Boolean = true
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var fileFormat: FileFormat = FileFormat.CSV
+
     enum class ExecutionType {
         ADHOC,
         SCHEDULED,
         BOTH
+    }
+
+    enum class FileFormat {
+        CSV, JSON, XLS, XLSX
     }
 
     enum class ActionType {

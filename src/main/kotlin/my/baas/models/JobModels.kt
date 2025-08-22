@@ -27,7 +27,7 @@ data class JobStatusResponse(
     val resultAvailable: Boolean = false,
     val resultUrl: String? = null,
     val fileSizeBytes: Long? = null,
-    val fileFormat: String = "CSV"
+    val fileFormat: ReportModel.FileFormat = ReportModel.FileFormat.JSON
 )
 
 data class JobProgress(
@@ -41,7 +41,7 @@ data class JobProgress(
 data class ReportExecutionRequest(
     val reportId: Long,
     val parameters: Map<String, Any> = emptyMap(),
-    val outputFormat: String = "CSV",
+    val outputFormat: ReportModel.FileFormat = ReportModel.FileFormat.JSON,
     val priority: JobPriority = JobPriority.NORMAL
 )
 

@@ -35,6 +35,10 @@ dependencies {
     // CSV generation
     implementation(libs.opencsv)
     
+    // Excel generation
+    implementation(libs.apache.poi)
+    implementation(libs.apache.poi.ooxml)
+    
     implementation(libs.postgresql)
     implementation(libs.log4j.slf4j.impl)
     implementation(libs.log4j.core)

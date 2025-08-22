@@ -79,6 +79,7 @@ class ReportService(
         // Update existing report fields
         existingReport.name = updatedReport.name
         existingReport.sql = updatedReport.sql
+        existingReport.fileFormat = updatedReport.fileFormat
         existingReport.executionType = updatedReport.executionType
         existingReport.cronSchedule = updatedReport.cronSchedule
         existingReport.completionActions = updatedReport.completionActions
@@ -201,6 +202,7 @@ class ReportService(
         val contentType = when (executionLog.fileFormat.uppercase()) {
             "CSV" -> "text/csv"
             "JSON" -> "application/json"
+            "XLS" -> "application/vnd.ms-excel"
             "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             else -> "application/octet-stream"
         }
