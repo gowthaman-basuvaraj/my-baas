@@ -27,8 +27,8 @@ object AppContext {
             })
             dc.objectMapper = objectMapper
             dc.jsonFactory = MappingJsonFactory(objectMapper)
-            dc.currentUserProvider = CurrentUserProvider()// this will populate who created field for every db table
-            dc.currentTenantProvider = CurrentTenantProvider()// this will populate tenant filtering
+            dc.currentUserProvider = CurrentUserProvider()
+            dc.currentTenantProvider = CurrentTenantProvider()
             dc.isRunMigration = true
             dc.isDefaultServer = true
             dc.tenantMode = TenantMode.PARTITION

@@ -1,8 +1,8 @@
 package my.baas.services
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import my.baas.config.AppConfig
 import my.baas.config.AppContext
+import my.baas.config.AppContext.objectMapper
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPooled
 import redis.clients.jedis.JedisPubSub
@@ -14,7 +14,6 @@ object RedisEventPublisher {
     private const val EVENTS_CHANNEL = "mybaas:events"
 
     private val appConfig: AppConfig = AppContext.appConfig
-    private val objectMapper = ObjectMapper()
     private val password = appConfig.redisPassword()
 
     private val jedisPool: JedisPooled by lazy {
@@ -51,7 +50,7 @@ object RedisEventPublisher {
         try {
             val eventJson = objectMapper.writeValueAsString(event)
             jedisPool.publish(EVENTS_CHANNEL, eventJson)
-            logger.debug("Published event to Redis: ${event.eventType} for ${event.entityName}")
+            logger.debug("Published event to Redis: {} for {}", event.eventType, event.entityName)
         } catch (e: Exception) {
             logger.error("Failed to publish event to Redis: ${e.message}", e)
         }
@@ -69,7 +68,7 @@ object RedisEventPublisher {
                                 val event = objectMapper.readValue(message, DataChangeEvent::class.java)
                                 // Forward to local WebSocket clients
                                 WebSocketEventManager.publishEventToLocalClients(event)
-                                logger.debug("Processed Redis event: ${event.eventType} for ${event.entityName}")
+                                logger.debug("Processed Redis event: {} for {}", event.eventType, event.entityName)
                             } catch (e: Exception) {
                                 logger.error("Failed to process Redis event message: ${e.message}", e)
                             }

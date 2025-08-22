@@ -3,6 +3,123 @@
 @baseUrl = http://localhost:7070
 @authToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJpYXQiOjE2MTYyMzkwMjJ9.test-token
 @tenantHost = localhost:7070
+@adminToken = admin-secret-token
+
+### ============================================
+### ADMIN TENANT MANAGEMENT APIS
+### ============================================
+
+### Create a new tenant
+POST {{baseUrl}}/admin/tenants
+Content-Type: application/json
+X-Admin-Token: {{adminToken}}
+
+{
+  "name": "Acme Corporation",
+  "domain": "acme.example.com",
+  "isActive": true,
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"]
+}
+
+###
+
+### Create another tenant
+POST {{baseUrl}}/admin/tenants
+Content-Type: application/json
+X-Admin-Token: {{adminToken}}
+
+{
+  "name": "Beta Company",
+  "domain": "beta.example.com",
+  "isActive": true
+}
+
+###
+
+### Get all tenants with pagination
+GET {{baseUrl}}/admin/tenants?page=1&pageSize=10
+X-Admin-Token: {{adminToken}}
+
+###
+
+### Get tenant by ID
+# Replace {id} with actual tenant ID from create response
+GET {{baseUrl}}/admin/tenants/1
+X-Admin-Token: {{adminToken}}
+
+###
+
+### Update tenant
+# Replace {id} with actual tenant ID
+PUT {{baseUrl}}/admin/tenants/1
+Content-Type: application/json
+X-Admin-Token: {{adminToken}}
+
+{
+  "name": "Acme Corporation Updated",
+  "domain": "acme.example.com",
+  "isActive": true,
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12"]
+}
+
+###
+
+### Activate tenant
+# Replace {id} with actual tenant ID
+POST {{baseUrl}}/admin/tenants/1/activate
+X-Admin-Token: {{adminToken}}
+
+###
+
+### Deactivate tenant
+# Replace {id} with actual tenant ID
+POST {{baseUrl}}/admin/tenants/1/deactivate
+X-Admin-Token: {{adminToken}}
+
+###
+
+### Update allowed IPs for tenant
+# Replace {id} with actual tenant ID
+PUT {{baseUrl}}/admin/tenants/1/allowed-ips
+Content-Type: application/json
+X-Admin-Token: {{adminToken}}
+
+{
+  "allowedIps": ["192.168.0.0/16", "10.0.0.0/8"]
+}
+
+###
+
+### Get tenant statistics
+# Replace {id} with actual tenant ID
+GET {{baseUrl}}/admin/tenants/1/stats
+X-Admin-Token: {{adminToken}}
+
+###
+
+### Delete tenant (will fail if tenant has data)
+# Replace {id} with actual tenant ID
+DELETE {{baseUrl}}/admin/tenants/999
+X-Admin-Token: {{adminToken}}
+
+###
+
+### Test admin auth with JWT token (with admin role)
+GET {{baseUrl}}/admin/tenants
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbi11c2VyIiwicm9sZXMiOlsiYWRtaW4iXSwiaWF0IjoxNjE2MjM5MDIyfQ.admin-jwt-token
+
+###
+
+### Test unauthorized access (no token)
+GET {{baseUrl}}/admin/tenants
+
+###
+
+### Test unauthorized access (wrong token)
+GET {{baseUrl}}/admin/tenants
+X-Admin-Token: wrong-token
+
+###
 
 ### ============================================
 ### SCHEMA APIS

@@ -3,11 +3,13 @@ package my.baas
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.json.JavalinJackson
+import my.baas.auth.AdminAuthHandler
 import my.baas.auth.AuthHandler
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.controllers.DataModelController
 import my.baas.controllers.SchemaController
+import my.baas.controllers.TenantController
 import my.baas.controllers.WebSocketHandler
 import my.baas.services.DataModelService
 import my.baas.services.RedisEventPublisher
@@ -30,6 +32,24 @@ fun main() {
         .create { config ->
             config.jsonMapper(JavalinJackson(AppContext.objectMapper))
             config.router.apiBuilder {
+                // Admin APIs - for managing tenants
+                path("admin") {
+                    before(AdminAuthHandler.handle)
+                    after { CurrentUser.clear() }
+                    path("tenants") {
+                        get(TenantController::getAll)
+                        post(TenantController::create)
+                        path("{id}") {
+                            get(TenantController::getOne)
+                            put(TenantController::update)
+                            delete(TenantController::delete)
+                            post("activate", TenantController::activate)
+                            post("deactivate", TenantController::deactivate)
+                        }
+                    }
+                }
+                
+                // Regular APIs - tenant-scoped
                 path("api") {
                     before(AuthHandler.handle)
                     after { CurrentUser.clear() }
