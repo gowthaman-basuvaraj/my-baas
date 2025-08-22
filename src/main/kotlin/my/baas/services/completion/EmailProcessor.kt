@@ -1,4 +1,4 @@
-package my.baas.services
+package my.baas.services.completion
 
 import jakarta.activation.DataHandler
 import jakarta.activation.FileDataSource

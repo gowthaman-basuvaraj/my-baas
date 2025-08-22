@@ -1,4 +1,4 @@
-package my.baas.services
+package my.baas.services.completion
 
 import io.minio.BucketExistsArgs
 import io.minio.MakeBucketArgs

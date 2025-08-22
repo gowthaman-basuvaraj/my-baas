@@ -11,6 +11,7 @@ import my.baas.models.ReportModel
 import my.baas.models.TenantModel
 import my.baas.repositories.ReportExecutionRepository
 import my.baas.repositories.ReportExecutionRepositoryImpl
+import my.baas.services.completion.CompletionActionProcessor
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.slf4j.LoggerFactory

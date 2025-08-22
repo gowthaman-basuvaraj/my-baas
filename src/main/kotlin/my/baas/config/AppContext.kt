@@ -12,10 +12,10 @@ import io.ebean.datasource.DataSourceConfig
 import my.baas.auth.CurrentTenantProvider
 import my.baas.auth.CurrentUserProvider
 import my.baas.models.ReportModel
-import my.baas.services.CompletionActionProcessor
-import my.baas.services.EmailProcessor
-import my.baas.services.S3UploadProcessor
-import my.baas.services.SftpUploadProcessor
+import my.baas.services.completion.CompletionActionProcessor
+import my.baas.services.completion.EmailProcessor
+import my.baas.services.completion.S3UploadProcessor
+import my.baas.services.completion.SftpUploadProcessor
 import net.cactusthorn.config.core.factory.ConfigFactory
 
 object AppContext {
