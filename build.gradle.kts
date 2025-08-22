@@ -29,6 +29,12 @@ dependencies {
     implementation(libs.delight.nashorn.sandbox)
     implementation(libs.jedis)
     
+    // MinIO client for S3-compatible object storage
+    implementation(libs.minio)
+    
+    // CSV generation
+    implementation(libs.opencsv)
+    
     implementation(libs.postgresql)
     implementation(libs.log4j.slf4j.impl)
     implementation(libs.log4j.core)

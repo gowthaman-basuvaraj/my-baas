@@ -4,6 +4,7 @@ import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
 import my.baas.config.AppContext
+import my.baas.models.TenantConfiguration
 import my.baas.models.TenantModel
 
 object TenantController {
@@ -20,6 +21,9 @@ object TenantController {
         if (existingTenant != null) {
             throw BadRequestResponse("Tenant with domain '${tenant.domain}' already exists")
         }
+
+        // Validate configuration
+        validateTenantConfiguration(tenant.config)
 
         tenant.save()
         ctx.status(201).json(tenant)
@@ -69,10 +73,15 @@ object TenantController {
             }
         }
 
+        // Validate configuration if provided
+        validateTenantConfiguration(updatedTenant.config)
+        
         tenant.name = updatedTenant.name
         tenant.domain = updatedTenant.domain
         tenant.isActive = updatedTenant.isActive
         tenant.allowedIps = updatedTenant.allowedIps
+        tenant.config = updatedTenant.config
+        tenant.settings = updatedTenant.settings
         tenant.update()
 
         ctx.json(tenant)
@@ -113,6 +122,28 @@ object TenantController {
         tenant.update()
 
         ctx.json(mapOf("message" to "Tenant deactivated successfully", "tenant" to tenant))
+    }
+
+    private fun validateTenantConfiguration(config: TenantConfiguration) {
+        if (config.maxSchemas <= 0) {
+            throw BadRequestResponse("maxSchemas must be greater than 0")
+        }
+        if (config.maxReports <= 0) {
+            throw BadRequestResponse("maxReports must be greater than 0")
+        }
+        if (config.jobRetentionDays <= 0) {
+            throw BadRequestResponse("jobRetentionDays must be greater than 0")
+        }
+        if (config.maxReportExecutionTimeMinutes <= 0) {
+            throw BadRequestResponse("maxReportExecutionTimeMinutes must be greater than 0")
+        }
+        
+        // Validate JWKS URI format if provided
+        config.jwksUri?.let { jwksUri ->
+            if (!jwksUri.startsWith("https://") && !jwksUri.startsWith("http://")) {
+                throw BadRequestResponse("jwksUri must be a valid HTTP or HTTPS URL")
+            }
+        }
     }
 
 }

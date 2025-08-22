@@ -4,11 +4,17 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.ebean.PagedList
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.NotFoundResponse
+import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
-import my.baas.models.ReportModel
+import my.baas.services.TenantLimitService
+import my.baas.models.*
+import my.baas.repositories.ReportExecutionRepository
+import my.baas.repositories.ReportExecutionRepositoryImpl
 import my.baas.repositories.ReportRepository
 import my.baas.repositories.ReportRepositoryImpl
 import org.slf4j.LoggerFactory
+import java.time.Instant
+import java.util.*
 
 data class ReportExecutionResult(
     val reportId: Long,
@@ -22,11 +28,15 @@ data class ReportExecutionResult(
 
 class ReportService(
     private val repository: ReportRepository = ReportRepositoryImpl(),
+    private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl(),
     private val objectMapper: ObjectMapper = AppContext.objectMapper
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun createReport(report: ReportModel): ReportModel {
+        // Validate tenant limits before creating report
+        TenantLimitService.validateReportCreation()
+        
         // Validate report name uniqueness
         val existingReport = repository.findByName(report.name)
         if (existingReport != null) {
@@ -90,59 +100,119 @@ class ReportService(
         return repository.deleteById(id)
     }
 
-    fun executeReport(id: Long): ReportExecutionResult {
-        val report = repository.findById(id)
-            ?: throw NotFoundResponse("Report not found with id: $id")
 
-        if (!report.isActive) {
-            throw BadRequestResponse("Report '${report.name}' is not active")
-        }
-
-        val startTime = System.currentTimeMillis()
-
-        try {
-            val resultData = executeSqlQuery(report.sql)
-            val executionTime = System.currentTimeMillis() - startTime
-
-            val result = ReportExecutionResult(
-                reportId = report.id,
-                reportName = report.name,
-                success = true,
-                data = resultData,
-                executionTimeMs = executionTime,
-                rowCount = resultData.size
-            )
-
-            // Execute completion actions if configured
-            if (report.completionActions.isNotEmpty()) {
-                executeCompletionActions(report, result)
-            }
-
-            return result
-
-        } catch (e: Exception) {
-            val executionTime = System.currentTimeMillis() - startTime
-            logger.error("Error executing report ${report.name}", e)
-
-            return ReportExecutionResult(
-                reportId = report.id,
-                reportName = report.name,
-                success = false,
-                errorMessage = e.message ?: "Unknown error occurred",
-                executionTimeMs = executionTime
-            )
-        }
-    }
 
     fun getScheduledReports(): List<ReportModel> {
         return repository.findScheduledReports()
     }
 
-    fun executeReportByName(reportName: String): ReportExecutionResult {
-        val report = repository.findByName(reportName)
-            ?: throw NotFoundResponse("Report not found with name: $reportName")
 
-        return executeReport(report.id)
+    // New job-based execution methods
+    fun submitReportJob(request: ReportExecutionRequest): JobSubmissionResponse {
+        val report = repository.findById(request.reportId)
+            ?: throw NotFoundResponse("Report not found with id: ${request.reportId}")
+
+        if (!report.isActive) {
+            throw BadRequestResponse("Report '${report.name}' is not active")
+        }
+
+        val jobId = UUID.randomUUID().toString()
+        val currentUser = CurrentUser.get()
+        
+        val executionLog = ReportExecutionLog().apply {
+            this.jobId = jobId
+            this.report = report
+            this.status = ReportExecutionLog.JobStatus.PENDING
+            this.executionType = ReportExecutionLog.ExecutionTrigger.API_REQUEST
+            this.requestedBy = currentUser.userId
+            this.tenant = report.tenant
+            this.tenantId = report.tenantId
+            this.fileFormat = request.outputFormat
+            this.executionMetadata = mapOf(
+                "parameters" to request.parameters,
+                "priority" to request.priority.name,
+                "submittedAt" to Instant.now().toString()
+            )
+        }
+
+        executionRepository.save(executionLog)
+
+        return JobSubmissionResponse(
+            jobId = jobId,
+            reportId = report.id,
+            reportName = report.name,
+            status = ReportExecutionLog.JobStatus.PENDING,
+            submittedAt = executionLog.whenCreated
+        )
+    }
+
+    fun getJobStatus(jobId: String): JobStatusResponse {
+        val executionLog = executionRepository.findByJobId(jobId)
+            ?: throw NotFoundResponse("Job not found with id: $jobId")
+
+        return JobStatusResponse(
+            jobId = executionLog.jobId,
+            reportId = executionLog.report.id,
+            reportName = executionLog.report.name,
+            status = executionLog.status,
+            executionType = executionLog.executionType,
+            submittedAt = executionLog.whenCreated,
+            startedAt = executionLog.startedAt,
+            completedAt = executionLog.completedAt,
+            executionTimeMs = executionLog.executionTimeMs,
+            rowCount = executionLog.rowCount,
+            errorMessage = executionLog.errorMessage,
+            resultAvailable = executionLog.isCompleted() && executionLog.storageLocation != ReportExecutionLog.StorageLocation.NONE,
+            resultUrl = executionLog.getResultUrl(),
+            fileSizeBytes = executionLog.fileSizeBytes,
+            fileFormat = executionLog.fileFormat
+        )
+    }
+
+    fun getExecutionHistory(reportId: Long, pageNo: Int = 1, pageSize: Int = 20): PagedList<ReportExecutionLog> {
+        return executionRepository.findByReportId(reportId, pageNo, pageSize)
+    }
+
+
+    fun cancelJob(jobId: String): Boolean {
+        val executionLog = executionRepository.findByJobId(jobId)
+            ?: throw NotFoundResponse("Job not found with id: $jobId")
+
+        if (executionLog.status !in listOf(ReportExecutionLog.JobStatus.PENDING, ReportExecutionLog.JobStatus.RUNNING)) {
+            throw BadRequestResponse("Cannot cancel job with status: ${executionLog.status}")
+        }
+
+        executionLog.status = ReportExecutionLog.JobStatus.CANCELLED
+        executionLog.completedAt = Instant.now()
+        executionRepository.update(executionLog)
+
+        return true
+    }
+
+    fun getJobDownloadInfo(jobId: String): ReportResultDownloadInfo {
+        val executionLog = executionRepository.findByJobId(jobId)
+            ?: throw NotFoundResponse("Job not found with id: $jobId")
+
+        if (!executionLog.isCompleted()) {
+            throw BadRequestResponse("Job is not completed yet")
+        }
+
+        val fileName = "${executionLog.report.name}_${executionLog.jobId}.${executionLog.fileFormat.lowercase()}"
+        val contentType = when (executionLog.fileFormat.uppercase()) {
+            "CSV" -> "text/csv"
+            "JSON" -> "application/json"
+            "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else -> "application/octet-stream"
+        }
+
+        return ReportResultDownloadInfo(
+            jobId = executionLog.jobId,
+            fileName = fileName,
+            contentType = contentType,
+            fileSizeBytes = executionLog.fileSizeBytes ?: 0,
+            isAvailable = executionLog.getResultUrl() != null,
+            downloadUrl = executionLog.getResultUrl()
+        )
     }
 
     private fun validateExecutionTypeAndSchedule(report: ReportModel) {
@@ -240,19 +310,6 @@ class ReportService(
         return parts.size in 5..6
     }
 
-    private fun executeSqlQuery(sql: String): List<Map<String, Any?>> {
-        val results = mutableListOf<Map<String, Any?>>()
-
-        AppContext.db.sqlQuery(sql).findList().forEach { sqlRow ->
-            val row = mutableMapOf<String, Any?>()
-            sqlRow.keys().forEach { columnName ->
-                row[columnName] = sqlRow.get(columnName)
-            }
-            results.add(row)
-        }
-
-        return results
-    }
 
     private fun executeCompletionActions(report: ReportModel, result: ReportExecutionResult) {
         report.completionActions.forEach { action ->

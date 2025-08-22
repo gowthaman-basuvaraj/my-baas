@@ -5,10 +5,14 @@ import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
 import my.baas.config.AppContext
 import my.baas.models.SchemaModel
+import my.baas.services.TenantLimitService
 
 object SchemaController : CrudHandler {
 
     override fun create(ctx: Context) {
+        // Validate tenant limits before creating schema
+        TenantLimitService.validateSchemaCreation()
+        
         val schema = ctx.bodyAsClass(SchemaModel::class.java)
         schema.save()
         ctx.status(201).json(schema)

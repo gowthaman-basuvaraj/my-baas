@@ -8,6 +8,7 @@ import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.controllers.*
 import my.baas.services.DataModelService
+import my.baas.services.JobRunnerServiceHolder
 import my.baas.services.RedisEventPublisher
 import org.slf4j.LoggerFactory
 
@@ -22,6 +23,10 @@ fun main() {
 
     // Initialize Redis event publisher if enabled
     RedisEventPublisher.initialize()
+
+    // Initialize Job Runner Service for report execution
+    JobRunnerServiceHolder.instance
+    logger.info("Report job runner initialized")
 
     Javalin
         .create { config ->
@@ -58,12 +63,16 @@ fun main() {
                             get(ReportController::getOne)
                             put(ReportController::update)
                             delete(ReportController::delete)
-                            post("execute", ReportController::execute)
                             post("activate", ReportController::activate)
                             post("deactivate", ReportController::deactivate)
+                            get("history", ReportController::getExecutionHistory)
                         }
-                        path("name/{name}") {
-                            post("execute", ReportController::executeByName)
+                        // Job management endpoints
+                        post("jobs", ReportController::submitJob)
+                        path("jobs/{jobId}") {
+                            get(ReportController::getJobStatus)
+                            post("cancel", ReportController::cancelJob)
+                            get("download", ReportController::downloadResult)
                         }
                     }
                     path("data") {

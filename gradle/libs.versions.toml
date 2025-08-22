@@ -17,6 +17,8 @@ ebean-platform-postgres = "15.8.0"
 ebean-migration = "13.24.0"
 delight-nashorn-sandbox = "0.5.3"
 jedis = "5.1.0"
+minio = "8.5.12"
+opencsv = "5.9"
 
 [libraries]
 javalin = { module = "io.javalin:javalin", version.ref = "javalin" }
@@ -41,6 +43,12 @@ ebean-platform-postgres = { module = "io.ebean:ebean-platform-postgres", version
 ebean-migration = { module = "io.ebean:ebean-migration", version.ref = "ebean-migration" }
 delight-nashorn-sandbox = { module = "org.javadelight:delight-nashorn-sandbox", version.ref = "delight-nashorn-sandbox" }
 jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
+
+# MinIO client for S3-compatible object storage
+minio = { module = "io.minio:minio", version.ref = "minio" }
+
+# CSV generation
+opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
 
 
 

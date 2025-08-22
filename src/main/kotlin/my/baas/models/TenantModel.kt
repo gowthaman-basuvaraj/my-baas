@@ -22,6 +22,17 @@ class TenantModel(
     var settings: Map<String, Any> = hashMapOf(),
     
     @DbJsonB
+    var config: TenantConfiguration = TenantConfiguration(),
+    
+    @DbJsonB
     var allowedIps: List<String>? = null
     
 ) : BaseModel()
+
+data class TenantConfiguration(
+    val maxSchemas: Int = 50,
+    val maxReports: Int = 100,
+    val jobRetentionDays: Int = 30,
+    val jwksUri: String? = null,
+    val maxReportExecutionTimeMinutes: Long = 60
+)
