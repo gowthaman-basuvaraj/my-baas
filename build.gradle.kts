@@ -39,6 +39,11 @@ dependencies {
     implementation(libs.apache.poi)
     implementation(libs.apache.poi.ooxml)
     
+    // SFTP and Email
+    implementation(libs.jsch)
+    implementation(libs.jakarta.mail)
+    implementation(libs.jakarta.mail.impl)
+    
     implementation(libs.postgresql)
     implementation(libs.log4j.slf4j.impl)
     implementation(libs.log4j.core)

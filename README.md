@@ -69,3 +69,13 @@ The application uses environment variables that map to configuration keys in `ap
 - `REPORT_MINIO_REGION` → `report.minio.region`
 - `REPORT_MINIO_PREFIX` → `report.minio.prefix`
 - `REPORT_MINIO_SECURE` → `report.minio.secure`
+
+### Email (for report completion notifications)
+- `EMAIL_SMTP_HOST` → `email.smtp.host`
+- `EMAIL_SMTP_PORT` → `email.smtp.port`
+- `EMAIL_SMTP_USERNAME` → `email.smtp.username`
+- `EMAIL_SMTP_PASSWORD` → `email.smtp.password`
+- `EMAIL_SMTP_AUTH` → `email.smtp.auth`
+- `EMAIL_SMTP_STARTTLS_ENABLE` → `email.smtp.starttls.enable`
+- `EMAIL_FROM_ADDRESS` → `email.from.address`
+- `EMAIL_FROM_NAME` → `email.from.name`

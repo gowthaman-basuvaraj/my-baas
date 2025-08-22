@@ -6,7 +6,6 @@ import io.javalin.http.BadRequestResponse
 import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
-import my.baas.services.TenantLimitService
 import my.baas.models.*
 import my.baas.repositories.ReportExecutionRepository
 import my.baas.repositories.ReportExecutionRepositoryImpl
@@ -36,7 +35,7 @@ class ReportService(
     fun createReport(report: ReportModel): ReportModel {
         // Validate tenant limits before creating report
         TenantLimitService.validateReportCreation()
-        
+
         // Validate report name uniqueness
         val existingReport = repository.findByName(report.name)
         if (existingReport != null) {
@@ -102,7 +101,6 @@ class ReportService(
     }
 
 
-
     fun getScheduledReports(): List<ReportModel> {
         return repository.findScheduledReports()
     }
@@ -119,7 +117,7 @@ class ReportService(
 
         val jobId = UUID.randomUUID().toString()
         val currentUser = CurrentUser.get()
-        
+
         val executionLog = ReportExecutionLog().apply {
             this.jobId = jobId
             this.report = report
@@ -179,7 +177,11 @@ class ReportService(
         val executionLog = executionRepository.findByJobId(jobId)
             ?: throw NotFoundResponse("Job not found with id: $jobId")
 
-        if (executionLog.status !in listOf(ReportExecutionLog.JobStatus.PENDING, ReportExecutionLog.JobStatus.RUNNING)) {
+        if (executionLog.status !in listOf(
+                ReportExecutionLog.JobStatus.PENDING,
+                ReportExecutionLog.JobStatus.RUNNING
+            )
+        ) {
             throw BadRequestResponse("Cannot cancel job with status: ${executionLog.status}")
         }
 
@@ -198,19 +200,13 @@ class ReportService(
             throw BadRequestResponse("Job is not completed yet")
         }
 
-        val fileName = "${executionLog.report.name}_${executionLog.jobId}.${executionLog.fileFormat.lowercase()}"
-        val contentType = when (executionLog.fileFormat.uppercase()) {
-            "CSV" -> "text/csv"
-            "JSON" -> "application/json"
-            "XLS" -> "application/vnd.ms-excel"
-            "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            else -> "application/octet-stream"
-        }
+        val fileName = "${executionLog.report.name}_${executionLog.jobId}.${executionLog.fileFormat.fileExtension()}"
+
 
         return ReportResultDownloadInfo(
             jobId = executionLog.jobId,
             fileName = fileName,
-            contentType = contentType,
+            contentType = executionLog.fileFormat.getContentType(),
             fileSizeBytes = executionLog.fileSizeBytes ?: 0,
             isAvailable = executionLog.getResultUrl() != null,
             downloadUrl = executionLog.getResultUrl()
@@ -312,34 +308,6 @@ class ReportService(
         return parts.size in 5..6
     }
 
-
-    private fun executeCompletionActions(report: ReportModel, result: ReportExecutionResult) {
-        report.completionActions.forEach { action ->
-            try {
-                when (action) {
-                    is ReportModel.CompletionAction.S3Upload -> {
-                        // TODO: Implement S3 upload
-                        logger.info("S3 upload action executed for report: ${report.name} to bucket: ${action.bucketName}")
-                    }
-
-                    is ReportModel.CompletionAction.SftpUpload -> {
-                        // TODO: Implement SFTP upload
-                        logger.info("SFTP upload action executed for report: ${report.name} to ${action.host}:${action.remotePath}")
-                    }
-
-                    is ReportModel.CompletionAction.Email -> {
-                        // TODO: Implement email sending
-                        logger.info("Email action executed for report: ${report.name} to ${action.to.joinToString()}")
-                    }
-                }
-            } catch (e: Exception) {
-                logger.error(
-                    "Error executing completion action ${action::class.simpleName} for report ${report.name}",
-                    e
-                )
-            }
-        }
-    }
 
     private fun isValidEmail(email: String): Boolean {
         return email.matches(Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"))

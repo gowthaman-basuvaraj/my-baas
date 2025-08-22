@@ -1,8 +1,21 @@
 package my.baas.services
 
+import com.jcraft.jsch.ChannelSftp
+import com.jcraft.jsch.JSch
+import com.jcraft.jsch.SftpException
 import com.opencsv.CSVWriter
 import io.ebean.SqlQuery
 import io.minio.*
+import jakarta.activation.DataHandler
+import jakarta.activation.FileDataSource
+import jakarta.mail.Authenticator
+import jakarta.mail.Message
+import jakarta.mail.PasswordAuthentication
+import jakarta.mail.Transport
+import jakarta.mail.internet.InternetAddress
+import jakarta.mail.internet.MimeBodyPart
+import jakarta.mail.internet.MimeMessage
+import jakarta.mail.internet.MimeMultipart
 import my.baas.config.AppContext
 import my.baas.config.ReportConfig
 import my.baas.models.ReportExecutionLog
@@ -19,6 +32,7 @@ import java.io.OutputStreamWriter
 import java.nio.file.Files
 import java.time.Instant
 import java.time.format.DateTimeFormatter
+import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -147,12 +161,7 @@ class JobRunnerService(
         maxExecutionTimeMs: Long
     ): Pair<Int, File> {
         val timestamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(Instant.now())
-        val fileExtension = when (executionLog.report.fileFormat) {
-            ReportModel.FileFormat.CSV -> "csv"
-            ReportModel.FileFormat.JSON -> "json"
-            ReportModel.FileFormat.XLS -> "xls"
-            ReportModel.FileFormat.XLSX -> "xlsx"
-        }
+        val fileExtension = executionLog.fileFormat.fileExtension()
         val fileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.$fileExtension"
         val zipFileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.zip"
         val zipFile = File(config.getLocalStoragePathAsPath().toFile(), zipFileName)
@@ -321,7 +330,7 @@ class JobRunnerService(
             val putObjectArgs = PutObjectArgs.builder()
                 .bucket(config.minioConfig.bucketName)
                 .`object`(objectKey)
-                .contentType(getContentType(executionLog.fileFormat)).build()
+                .contentType(executionLog.fileFormat.getContentType()).build()
 
             minioClient.putObject(putObjectArgs)
 
@@ -335,14 +344,6 @@ class JobRunnerService(
 
     }
 
-    private fun getContentType(fileFormat: ReportModel.FileFormat): String {
-        return when (fileFormat) {
-            ReportModel.FileFormat.CSV -> "text/csv"
-            ReportModel.FileFormat.JSON -> "application/json"
-            ReportModel.FileFormat.XLS -> "application/vnd.ms-excel"
-            ReportModel.FileFormat.XLSX -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        }
-    }
 
     private fun executeCompletionActions(executionLog: ReportExecutionLog) {
         executionLog.report.completionActions.forEach { action ->
@@ -354,13 +355,11 @@ class JobRunnerService(
                     }
 
                     is ReportModel.CompletionAction.SftpUpload -> {
-                        // TODO: Implement SFTP upload
-                        logger.info("SFTP upload not yet implemented for job: ${executionLog.jobId}")
+                        uploadToSftp(action, executionLog)
                     }
 
                     is ReportModel.CompletionAction.Email -> {
-                        // TODO: Implement email sending
-                        logger.info("Email sending not yet implemented for job: ${executionLog.jobId}")
+                        sendEmail(action, executionLog)
                     }
                 }
             } catch (e: Exception) {
@@ -391,7 +390,7 @@ class JobRunnerService(
             }
 
             val putObjectArgs = PutObjectArgs.builder().bucket(action.bucketName).`object`(objectKey)
-                .contentType(getContentType(executionLog.fileFormat)).build()
+                .contentType(executionLog.fileFormat.getContentType()).build()
 
             customMinioClient.putObject(putObjectArgs)
 
@@ -399,6 +398,148 @@ class JobRunnerService(
 
         } catch (e: Exception) {
             logger.error("Failed to upload to custom MinIO for job: ${executionLog.jobId}", e)
+        }
+    }
+
+    private fun uploadToSftp(action: ReportModel.CompletionAction.SftpUpload, executionLog: ReportExecutionLog) {
+        try {
+            val localFile = File(executionLog.localFilePath!!)
+
+            val jsch = JSch()
+
+            // Setup SSH key if provided
+            if (!action.sshKey.isNullOrBlank()) {
+                jsch.addIdentity("temp_key", action.sshKey.toByteArray(), null, null)
+            }
+
+            val session = jsch.getSession(action.username, action.host, action.port)
+
+            // Set password if provided
+            if (!action.password.isNullOrBlank()) {
+                session.setPassword(action.password)
+            }
+
+            // Skip host key verification
+            val config = Properties()
+            config["StrictHostKeyChecking"] = "no"
+            session.setConfig(config)
+
+            session.connect()
+
+            val channelSftp = session.openChannel("sftp") as ChannelSftp
+            channelSftp.connect()
+
+            // Create remote directories if they don't exist
+            val remotePath = action.remotePath.trimEnd('/')
+            val remoteFile = "$remotePath/${localFile.name}"
+
+            try {
+                // Try to create directory path
+                val dirs = remotePath.split("/").filter { it.isNotBlank() }
+                var currentPath = ""
+                for (dir in dirs) {
+                    currentPath = if (currentPath.isEmpty()) "/$dir" else "$currentPath/$dir"
+                    try {
+                        channelSftp.mkdir(currentPath)
+                    } catch (e: SftpException) {
+                        // Directory might already exist, continue
+                    }
+                }
+            } catch (e: Exception) {
+                logger.warn("Could not create remote directories: ${e.message}")
+            }
+
+            // Upload the file
+            channelSftp.put(localFile.absolutePath, remoteFile)
+
+            channelSftp.disconnect()
+            session.disconnect()
+
+            logger.info("File uploaded to SFTP: ${action.host}:$remoteFile")
+
+        } catch (e: Exception) {
+            logger.error("Failed to upload to SFTP for job: ${executionLog.jobId}", e)
+            throw e
+        }
+    }
+
+    private fun sendEmail(action: ReportModel.CompletionAction.Email, executionLog: ReportExecutionLog) {
+        if (config.emailConfig == null) {
+            logger.warn("Email configuration not available, skipping email for job: ${executionLog.jobId}")
+            return
+        }
+
+        try {
+            val properties = Properties().apply {
+                put("mail.smtp.host", config.emailConfig.smtpHost)
+                put("mail.smtp.port", config.emailConfig.smtpPort.toString())
+                put("mail.smtp.auth", config.emailConfig.auth.toString())
+                put("mail.smtp.starttls.enable", config.emailConfig.startTlsEnable.toString())
+            }
+
+            val session =
+                if (config.emailConfig.auth && config.emailConfig.username != null && config.emailConfig.password != null) {
+                    jakarta.mail.Session.getInstance(properties, object : Authenticator() {
+                        override fun getPasswordAuthentication(): PasswordAuthentication {
+                            return PasswordAuthentication(config.emailConfig.username, config.emailConfig.password)
+                        }
+                    })
+                } else {
+                    jakarta.mail.Session.getInstance(properties)
+                }
+
+            val message = MimeMessage(session).apply {
+                setFrom(InternetAddress(config.emailConfig.fromAddress, config.emailConfig.fromName))
+
+                // Set recipients
+                setRecipients(Message.RecipientType.TO, action.to.joinToString(","))
+                if (action.cc.isNotEmpty()) {
+                    setRecipients(Message.RecipientType.CC, action.cc.joinToString(","))
+                }
+                if (action.bcc.isNotEmpty()) {
+                    setRecipients(Message.RecipientType.BCC, action.bcc.joinToString(","))
+                }
+
+                subject = action.subject
+
+                if (action.attachFile && executionLog.localFilePath != null) {
+                    // Create multipart message with attachment
+                    val multipart = MimeMultipart()
+
+                    // Add text part
+                    val textPart = MimeBodyPart().apply {
+                        setText(
+                            action.body
+                                ?: "Report execution completed successfully.\n\nReport: ${executionLog.report.name}\nRows: ${executionLog.rowCount}\nExecution Time: ${executionLog.executionTimeMs}ms"
+                        )
+                    }
+                    multipart.addBodyPart(textPart)
+
+                    // Add attachment
+                    val attachmentPart = MimeBodyPart().apply {
+                        val localFile = File(executionLog.localFilePath!!)
+                        dataHandler = DataHandler(FileDataSource(localFile))
+                        fileName = localFile.name
+                    }
+                    multipart.addBodyPart(attachmentPart)
+
+                    setContent(multipart)
+                } else {
+                    // Simple text message
+                    setText(
+                        action.body
+                            ?: "Report execution completed successfully.\n\nReport: ${executionLog.report.name}\nRows: ${executionLog.rowCount}\nExecution Time: ${executionLog.executionTimeMs}ms"
+                    )
+                }
+            }
+
+            Transport.send(message)
+
+            logger.info("Email sent successfully for job: ${executionLog.jobId} to ${action.to.joinToString()}")
+
+        } catch (e: Exception) {
+            logger.error("Failed to send email for job: ${executionLog.jobId}", e)
+            throw e
         }
     }
 

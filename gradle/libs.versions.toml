@@ -20,6 +20,8 @@ jedis = "5.1.0"
 minio = "8.5.12"
 opencsv = "5.9"
 apache-poi = "5.2.5"
+jsch = "0.1.55"
+jakarta-mail = "2.1.3"
 
 [libraries]
 javalin = { module = "io.javalin:javalin", version.ref = "javalin" }
@@ -54,6 +56,11 @@ opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
 # Excel generation
 apache-poi = { module = "org.apache.poi:poi", version.ref = "apache-poi" }
 apache-poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "apache-poi" }
+
+# SFTP and Email
+jsch = { module = "com.jcraft:jsch", version.ref = "jsch" }
+jakarta-mail = { module = "jakarta.mail:jakarta.mail-api", version.ref = "jakarta-mail" }
+jakarta-mail-impl = { module = "org.eclipse.angus:jakarta.mail", version.ref = "jakarta-mail" }
 
 
 

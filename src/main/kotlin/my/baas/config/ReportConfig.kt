@@ -9,7 +9,8 @@ data class ReportConfig(
     val jobTimeoutMinutes: Long,
     val resultRetentionDays: Int,
     val enableMinioUpload: Boolean,
-    val minioConfig: MinioConfig?
+    val minioConfig: MinioConfig?,
+    val emailConfig: EmailConfig?
 ) {
     fun getLocalStoragePathAsPath(): Path = Paths.get(localStoragePath)
     
@@ -26,6 +27,19 @@ data class ReportConfig(
                     secure = appConfig.reportMinioSecure()
                 )
             } else null
+
+            val emailConfig = if (appConfig.emailSmtpHost().isPresent && appConfig.emailFromAddress().isPresent) {
+                EmailConfig(
+                    smtpHost = appConfig.emailSmtpHost().get(),
+                    smtpPort = appConfig.emailSmtpPort(),
+                    username = appConfig.emailSmtpUsername().orElse(null),
+                    password = appConfig.emailSmtpPassword().orElse(null),
+                    auth = appConfig.emailSmtpAuth(),
+                    startTlsEnable = appConfig.emailSmtpStartTlsEnable(),
+                    fromAddress = appConfig.emailFromAddress().get(),
+                    fromName = appConfig.emailFromName()
+                )
+            } else null
             
             return ReportConfig(
                 localStoragePath = appConfig.reportLocalStoragePath(),
@@ -33,7 +47,8 @@ data class ReportConfig(
                 jobTimeoutMinutes = appConfig.reportJobTimeoutMinutes(),
                 resultRetentionDays = appConfig.reportResultRetentionDays(),
                 enableMinioUpload = appConfig.reportEnableMinioUpload(),
-                minioConfig = minioConfig
+                minioConfig = minioConfig,
+                emailConfig = emailConfig
             )
         }
     }
@@ -47,4 +62,15 @@ data class MinioConfig(
     val region: String,
     val prefix: String,
     val secure: Boolean
+)
+
+data class EmailConfig(
+    val smtpHost: String,
+    val smtpPort: Int,
+    val username: String?,
+    val password: String?,
+    val auth: Boolean,
+    val startTlsEnable: Boolean,
+    val fromAddress: String,
+    val fromName: String
 )

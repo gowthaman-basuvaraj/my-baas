@@ -78,4 +78,33 @@ interface AppConfig {
     @Default("true")
     fun reportMinioSecure(): Boolean
 
+    // Email configuration
+    @Key("email.smtp.host")
+    fun emailSmtpHost(): Optional<String>
+
+    @Key("email.smtp.port")
+    @Default("587")
+    fun emailSmtpPort(): Int
+
+    @Key("email.smtp.username")
+    fun emailSmtpUsername(): Optional<String>
+
+    @Key("email.smtp.password")
+    fun emailSmtpPassword(): Optional<String>
+
+    @Key("email.smtp.auth")
+    @Default("true")
+    fun emailSmtpAuth(): Boolean
+
+    @Key("email.smtp.starttls.enable")
+    @Default("true")
+    fun emailSmtpStartTlsEnable(): Boolean
+
+    @Key("email.from.address")
+    fun emailFromAddress(): Optional<String>
+
+    @Key("email.from.name")
+    @Default("MyBaaS Reports")
+    fun emailFromName(): String
+
 }

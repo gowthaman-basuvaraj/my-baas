@@ -38,7 +38,22 @@ class ReportModel : BaseTenantModel() {
     }
 
     enum class FileFormat {
-        CSV, JSON, XLS, XLSX
+        CSV, JSON, XLS, XLSX;
+         fun getContentType(): String {
+            return when (this) {
+                CSV -> "text/csv"
+                JSON -> "application/json"
+                XLS -> "application/vnd.ms-excel"
+                XLSX -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+        }
+
+        fun fileExtension() = when (this) {
+            CSV -> "csv"
+            JSON -> "json"
+            XLS -> "xls"
+            XLSX -> "xlsx"
+        }
     }
 
     enum class ActionType {
