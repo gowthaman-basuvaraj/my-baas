@@ -8,7 +8,7 @@ object ClientIpExtractor {
         // Check common proxy headers first
         val xForwardedFor = ctx.header("X-Forwarded-For")
         if (xForwardedFor != null && xForwardedFor.isNotBlank()) {
-            // X-Forwarded-For can contain multiple IPs, first one is the original client
+            // X-Forwarded-For can contain multiple IPs, the first one is the original client
             return xForwardedFor.split(",")[0].trim()
         }
         
@@ -27,7 +27,7 @@ object ClientIpExtractor {
             return xClusterClientIp.trim()
         }
         
-        // Fall back to remote address
-        return ctx.req().remoteAddr ?: "unknown"
+        // Fall back
+        return ctx.req().remoteAddr ?: ctx.ip()
     }
 }

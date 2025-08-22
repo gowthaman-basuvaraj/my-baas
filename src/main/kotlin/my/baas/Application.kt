@@ -3,14 +3,10 @@ package my.baas
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.json.JavalinJackson
-import my.baas.auth.AdminAuthHandler
 import my.baas.auth.AuthHandler
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
-import my.baas.controllers.DataModelController
-import my.baas.controllers.SchemaController
-import my.baas.controllers.TenantController
-import my.baas.controllers.WebSocketHandler
+import my.baas.controllers.*
 import my.baas.services.DataModelService
 import my.baas.services.RedisEventPublisher
 import org.slf4j.LoggerFactory
@@ -27,14 +23,12 @@ fun main() {
     // Initialize Redis event publisher if enabled
     RedisEventPublisher.initialize()
 
-
     Javalin
         .create { config ->
             config.jsonMapper(JavalinJackson(AppContext.objectMapper))
             config.router.apiBuilder {
                 // Admin APIs - for managing tenants
                 path("admin") {
-                    before(AdminAuthHandler.handle)
                     after { CurrentUser.clear() }
                     path("tenants") {
                         get(TenantController::getAll)
@@ -48,13 +42,29 @@ fun main() {
                         }
                     }
                 }
-                
+
                 // Regular APIs - tenant-scoped
                 path("api") {
                     before(AuthHandler.handle)
-                    after { CurrentUser.clear() }
                     path("schema") {
                         crud(SchemaController)
+                    }
+                    path("reports") {
+                        get(ReportController::getAll)
+                        post(ReportController::create)
+                        get("scheduled", ReportController::getScheduledReports)
+                        post("validate-sql", ReportController::validateSql)
+                        path("{id}") {
+                            get(ReportController::getOne)
+                            put(ReportController::update)
+                            delete(ReportController::delete)
+                            post("execute", ReportController::execute)
+                            post("activate", ReportController::activate)
+                            post("deactivate", ReportController::deactivate)
+                        }
+                        path("name/{name}") {
+                            post("execute", ReportController::executeByName)
+                        }
                     }
                     path("data") {
                         get("subscriptions", DataModelController::getActiveSubscriptions)
@@ -86,6 +96,7 @@ fun main() {
                             }
                         }
                     }
+                    after { CurrentUser.clear() }
                 }
                 // WebSocket endpoint for real-time events
                 ws("/ws/events", WebSocketHandler::configure)
