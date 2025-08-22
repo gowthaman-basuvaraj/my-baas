@@ -12,7 +12,7 @@ object TenantController {
         val tenant = ctx.bodyAsClass(TenantModel::class.java)
 
         // Check if the domain already exists
-        val existingTenant = AppContext.db.find(TenantModel::class.java)
+        val existingTenant = AppContext.adminDatabase.find(TenantModel::class.java)
             .where()
             .eq("domain", tenant.domain)
             .findOne()
@@ -29,7 +29,7 @@ object TenantController {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
 
-        val tenant = AppContext.db.find(TenantModel::class.java, tenantId)
+        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         ctx.json(tenant)
@@ -39,7 +39,7 @@ object TenantController {
         val page = ctx.queryParam("page")?.toIntOrNull() ?: 1
         val pageSize = ctx.queryParam("pageSize")?.toIntOrNull() ?: 20
 
-        val tenants = AppContext.db.find(TenantModel::class.java)
+        val tenants = AppContext.adminDatabase.find(TenantModel::class.java)
             .setFirstRow((page - 1) * pageSize)
             .setMaxRows(pageSize)
             .findPagedList()
@@ -51,14 +51,14 @@ object TenantController {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
 
-        val tenant = AppContext.db.find(TenantModel::class.java, tenantId)
+        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         val updatedTenant = ctx.bodyAsClass(TenantModel::class.java)
 
         // Check if new domain conflicts with existing tenant
         if (tenant.domain != updatedTenant.domain) {
-            val domainExists = AppContext.db.find(TenantModel::class.java)
+            val domainExists = AppContext.adminDatabase.find(TenantModel::class.java)
                 .where()
                 .eq("domain", updatedTenant.domain)
                 .ne("id", tenantId)
@@ -82,7 +82,7 @@ object TenantController {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
 
-        val tenant = AppContext.db.find(TenantModel::class.java, tenantId)
+        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         tenant.delete()
@@ -93,7 +93,7 @@ object TenantController {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
 
-        val tenant = AppContext.db.find(TenantModel::class.java, tenantId)
+        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         tenant.isActive = true
@@ -106,7 +106,7 @@ object TenantController {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
 
-        val tenant = AppContext.db.find(TenantModel::class.java, tenantId)
+        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         tenant.isActive = false
