@@ -28,9 +28,12 @@ class DataSearchRepositoryImpl : DataSearchRepository {
     }
 
     override fun deleteByEntityNameAndUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean {
-        val entities = findByEntityNameAndUniqueIdentifier(entityName, uniqueIdentifier)
-        entities.forEach { it.delete() }
-        return entities.isNotEmpty()
+
+        return AppContext.db.find(DataSearchModel::class.java)
+            .where()
+            .eq("entityName", entityName)
+            .eq("uniqueIdentifier", uniqueIdentifier)
+            .delete() > 0
     }
 
     override fun findByEntityNameAndUniqueIdentifier(

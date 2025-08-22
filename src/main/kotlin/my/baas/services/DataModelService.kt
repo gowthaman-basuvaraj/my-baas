@@ -190,30 +190,27 @@ class DataModelService(
     }
 
     fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean {
-        val dataModel = repository.findByUniqueIdentifier(entityName, uniqueIdentifier)
-        if (dataModel != null) {
-            // Execute beforeDelete hook
-            jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.BEFORE_DELETE, dataModel)
+        val dataModel = repository.findByUniqueIdentifier(entityName, uniqueIdentifier) ?: return false
+        // Execute beforeDelete hook
+        jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.BEFORE_DELETE, dataModel)
 
-            // Remove indexed data
-            searchRepository.deleteByEntityNameAndUniqueIdentifier(dataModel.entityName, uniqueIdentifier)
+        // Remove indexed data
+        searchRepository.deleteByEntityNameAndUniqueIdentifier(dataModel.entityName, uniqueIdentifier)
 
-            val deleted = repository.deleteByUniqueIdentifier(entityName, uniqueIdentifier)
+        val deleted = repository.deleteByUniqueIdentifier(entityName, uniqueIdentifier)
 
-            if (deleted) {
-                // Execute afterDelete hook
-                jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.AFTER_DELETE, dataModel)
+        if (deleted) {
+            // Execute afterDelete hook
+            jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.AFTER_DELETE, dataModel)
 
-                // Log audit trail
-                AuditService.logDataModelAction(AuditAction.DELETE, dataModel, dataModel.data)
+            // Log audit trail
+            AuditService.logDataModelAction(AuditAction.DELETE, dataModel, dataModel.data)
 
-                // Publish WebSocket event
-                publishEvent(EventType.DELETED, entityName, uniqueIdentifier, dataModel.versionName, null)
-            }
-
-            return deleted
+            // Publish WebSocket event
+            publishEvent(EventType.DELETED, entityName, uniqueIdentifier, dataModel.versionName, null)
         }
-        return false
+
+        return deleted
     }
 
     fun getSchema(entityName: String, versionName: String): Map<String, Any> {
@@ -423,7 +420,7 @@ class DataModelService(
     }
 
     fun validateSchemaExistsForEntity(entityName: String) {
-       return validateSchemaExistsForEntityAndVersion(entityName)
+        return validateSchemaExistsForEntityAndVersion(entityName)
     }
 
     fun validateSchemaExistsForEntityAndVersion(entityName: String, versionName: String? = null) {
@@ -431,7 +428,7 @@ class DataModelService(
             .where()
             .eq("entityName", entityName)
             .apply {
-                if(versionName != null){
+                if (versionName != null) {
                     eq("versionName", versionName)
                 }
             }
@@ -521,11 +518,11 @@ class DataModelService(
                         dataCreatedAt = dataModel.whenCreated,
                         dataModifiedAt = dataModel.whenModified
                     )
-                    
+
                     // Set tenant information for the search entity
                     searchEntity.tenant = dataModel.tenant
                     searchEntity.tenantId = dataModel.tenantId
-                    
+
                     searchEntities.add(searchEntity)
                 }
             }
