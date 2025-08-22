@@ -4,11 +4,17 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import io.ebean.annotation.DbJsonB
 import io.ebean.annotation.Index
 import jakarta.persistence.*
+import my.baas.annotations.GenerateDto
 import my.baas.models.json.CompletionActionDeserializer
 
 @Entity
 @Index(name = "report_name_idx", columnNames = ["name", "tenant_id"], unique = true)
-class ReportModel : BaseTenantModel() {
+@GenerateDto(
+    createDto = true,
+    viewDto = true,
+    excludeFromView = ["tenant"] // Additional exclusion for view DTO
+)
+class ReportModel : BaseModel() {
 
     @Column(nullable = false)
     lateinit var name: String

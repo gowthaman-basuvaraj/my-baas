@@ -40,7 +40,6 @@ object AuditService {
             )
             
             // Set tenant information
-            auditLog.tenant = tenant
             auditLog.tenantId = tenant.id
             
             AppContext.db.save(auditLog)

@@ -3,8 +3,9 @@ package my.baas.controllers
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
+import my.baas.dto.ReportModelCreateDto
+import my.baas.dto.ReportModelViewDto
 import my.baas.models.ReportExecutionRequest
-import my.baas.models.ReportModel
 import my.baas.services.JobRunnerService
 import my.baas.services.ReportService
 import java.io.FileInputStream
@@ -14,9 +15,10 @@ object ReportController {
     private val reportService = ReportService()
 
     fun create(ctx: Context) {
-        val report = ctx.bodyAsClass(ReportModel::class.java)
+        val reportCreateDto = ctx.bodyAsClass(ReportModelCreateDto::class.java)
+        val report = reportCreateDto.toModel()
         val createdReport = reportService.createReport(report)
-        ctx.status(201).json(createdReport)
+        ctx.status(201).json(ReportModelViewDto.fromModel(createdReport))
     }
 
     fun getOne(ctx: Context) {
@@ -24,7 +26,7 @@ object ReportController {
             ?: throw BadRequestResponse("Invalid report ID")
 
         val report = reportService.getReport(reportId)
-        ctx.json(report)
+        ctx.json(ReportModelViewDto.fromModel(report))
     }
 
     fun getAll(ctx: Context) {
@@ -32,18 +34,27 @@ object ReportController {
         val pageSize = ctx.queryParam("pageSize")?.toIntOrNull() ?: 20
 
         val reports = reportService.getAllReports(page, pageSize)
+        val reportDtos = reports.list.map { ReportModelViewDto.fromModel(it) }
 
+        // Create a response with the same pagination structure but DTOs instead of models
+        val dtoResponse = mapOf(
+            "list" to reportDtos,
+            "totalCount" to reports.totalCount,
+            "pageSize" to reports.pageSize,
+            "pageIndex" to reports.pageIndex,
+        )
 
-        ctx.json(reports)
+        ctx.json(dtoResponse)
     }
 
     fun update(ctx: Context) {
         val reportId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid report ID")
 
-        val updatedReport = ctx.bodyAsClass(ReportModel::class.java)
+        val reportCreateDto = ctx.bodyAsClass(ReportModelCreateDto::class.java)
+        val updatedReport = reportCreateDto.toModel()
         val report = reportService.updateReport(reportId, updatedReport)
-        ctx.json(report)
+        ctx.json(ReportModelViewDto.fromModel(report))
     }
 
     fun delete(ctx: Context) {

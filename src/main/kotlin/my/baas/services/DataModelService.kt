@@ -520,7 +520,6 @@ class DataModelService(
                     )
 
                     // Set tenant information for the search entity
-                    searchEntity.tenant = dataModel.tenant
                     searchEntity.tenantId = dataModel.tenantId
 
                     searchEntities.add(searchEntity)

@@ -8,6 +8,7 @@ import my.baas.config.AppContext.reportConfig
 import my.baas.config.MinioConfig
 import my.baas.models.ReportExecutionLog
 import my.baas.models.ReportModel
+import my.baas.models.TenantModel
 import my.baas.repositories.ReportExecutionRepository
 import my.baas.repositories.ReportExecutionRepositoryImpl
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
@@ -27,7 +28,7 @@ import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-object JobRunnerService{
+object JobRunnerService {
     private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl()
     private val logger = LoggerFactory.getLogger(javaClass)
     private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(reportConfig.maxConcurrentJobs)
@@ -99,8 +100,9 @@ object JobRunnerService{
 
             val startTime = System.currentTimeMillis()
 
+            val tenant = AppContext.db.find(TenantModel::class.java, executionLog.tenantId) ?: return
             // Get tenant-specific max execution time
-            val maxExecutionTimeMs = executionLog.tenant.config.maxReportExecutionTimeMinutes * 60 * 1000
+            val maxExecutionTimeMs = tenant.config.maxReportExecutionTimeMinutes * 60 * 1000
 
             // Update execution log to use report's file format
             executionLog.fileFormat = executionLog.report.fileFormat
@@ -308,10 +310,11 @@ object JobRunnerService{
 
     private fun uploadToMinio(executionLog: ReportExecutionLog, file: File): Pair<String?, String?> {
         if (minioClient == null || minioConfig == null) return null to null
+        val tenant = AppContext.db.find(TenantModel::class.java, executionLog.tenantId) ?: return null to null
 
         return try {
             val objectKey =
-                "${minioConfig.prefix}${executionLog.tenant.domain}/${executionLog.jobId}/${file.name}"
+                "${minioConfig.prefix}${tenant.domain}/${executionLog.jobId}/${file.name}"
 
             val putObjectArgs = PutObjectArgs.builder()
                 .bucket(minioConfig.bucketName)

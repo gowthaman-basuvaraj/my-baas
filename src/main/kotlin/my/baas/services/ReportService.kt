@@ -124,8 +124,7 @@ class ReportService(
             this.status = ReportExecutionLog.JobStatus.PENDING
             this.executionType = ReportExecutionLog.ExecutionTrigger.API_REQUEST
             this.requestedBy = currentUser.userId
-            this.tenant = report.tenant
-            this.tenantId = report.tenantId
+            this.tenantId = CurrentUser.get().tenant?.id ?: throw BadRequestResponse("tenant not found")
             this.fileFormat = request.outputFormat
             this.executionMetadata = mapOf(
                 "parameters" to request.parameters,

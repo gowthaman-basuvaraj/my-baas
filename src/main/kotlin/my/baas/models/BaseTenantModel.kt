@@ -11,7 +11,5 @@ abstract class BaseTenantModel : BaseModel() {
     @TenantId
     @Index
     var tenantId: Long = 0
-    
-    @ManyToOne(optional = false)
-    lateinit var tenant: TenantModel
+
 }

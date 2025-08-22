@@ -44,6 +44,10 @@ dependencies {
     implementation(libs.jakarta.mail)
     implementation(libs.jakarta.mail.impl)
     
+    // Annotation processing for DTO generation
+    implementation(libs.kotlinpoet)
+    testImplementation(libs.kotlin.compile.testing)
+    
     implementation(libs.postgresql)
     implementation(libs.log4j.slf4j.impl)
     implementation(libs.log4j.core)
