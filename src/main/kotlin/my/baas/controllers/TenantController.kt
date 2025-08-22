@@ -11,7 +11,7 @@ object TenantController {
     fun create(ctx: Context) {
         val tenant = ctx.bodyAsClass(TenantModel::class.java)
 
-        // Check if domain already exists
+        // Check if the domain already exists
         val existingTenant = AppContext.db.find(TenantModel::class.java)
             .where()
             .eq("domain", tenant.domain)
@@ -44,15 +44,7 @@ object TenantController {
             .setMaxRows(pageSize)
             .findPagedList()
 
-        ctx.json(
-            mapOf(
-                "items" to tenants.list,
-                "total" to tenants.totalCount,
-                "page" to page,
-                "pageSize" to pageSize,
-                "totalPages" to tenants.totalPageCount
-            )
-        )
+        ctx.json(tenants)
     }
 
     fun update(ctx: Context) {
