@@ -17,10 +17,18 @@ object RedisEventPublisher {
     private val password = appConfig.redisPassword()
 
     private val jedisPool: JedisPooled by lazy {
-        if (password.isNullOrBlank()) {
-            JedisPooled(appConfig.redisHost(), appConfig.redisPort())
+        if (password.isPresent) {
+            JedisPooled(
+                appConfig.redisHost().orElseThrow { IllegalArgumentException("redis.host not given") },
+                appConfig.redisPort().orElse(6379),
+                appConfig.redisUser().orElse(""),
+                password.get()
+            )
         } else {
-            JedisPooled(appConfig.redisHost(), appConfig.redisPort(), "", password)
+            JedisPooled(
+                appConfig.redisHost().orElseThrow { IllegalArgumentException("redis.host not given") },
+                appConfig.redisPort().orElse(6379)
+            )
         }
     }
     private var isInitialized = false
