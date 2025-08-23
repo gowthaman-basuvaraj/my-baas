@@ -247,7 +247,7 @@ class DataModelService(
                 "valid" to false,
                 "errors" to validationResult.map { error ->
                     mapOf(
-                        "path" to error.path,
+                        "path" to error.property,
                         "message" to error.message,
                         "type" to error.type
                     )

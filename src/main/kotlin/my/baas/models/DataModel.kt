@@ -7,6 +7,7 @@ import jakarta.persistence.ManyToOne
 
 @Entity
 @Index(columnNames = ["unique_identifier", "entity_name", "version_name", "tenant_id"], unique = true)
+@Index(columnNames = ["data"], definition = "CREATE INDEX search_gin_data ON data_model USING GIN(data jsonb_path_ops)")
 class DataModel(
 
     @ManyToOne

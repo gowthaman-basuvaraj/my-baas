@@ -12,7 +12,7 @@ import jakarta.persistence.Entity
 @GenerateDto(
     createDto = true,
     viewDto = true,
-    excludeFromView = ["tenant"] // Additional exclusion for view DTO
+    excludeFromView = ["tenant_id"] // Additional exclusion for view DTO
 )
 class SchemaModel(
 
@@ -33,4 +33,4 @@ class SchemaModel(
 
     var isValidationEnabled: Boolean = true
 
-) : BaseModel()
+) : BaseTenantModel()

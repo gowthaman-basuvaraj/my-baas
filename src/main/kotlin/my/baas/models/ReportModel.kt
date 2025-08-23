@@ -12,9 +12,9 @@ import my.baas.models.json.CompletionActionDeserializer
 @GenerateDto(
     createDto = true,
     viewDto = true,
-    excludeFromView = ["tenant"] // Additional exclusion for view DTO
+    excludeFromView = ["tenant_id"] // Additional exclusion for view DTO
 )
-class ReportModel : BaseModel() {
+class ReportModel : BaseTenantModel() {
 
     @Column(nullable = false)
     lateinit var name: String

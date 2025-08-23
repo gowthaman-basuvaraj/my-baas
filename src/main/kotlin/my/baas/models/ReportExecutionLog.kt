@@ -13,6 +13,7 @@ class ReportExecutionLog : BaseTenantModel() {
 
     lateinit var jobId: String
 
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     lateinit var report: ReportModel
 
     @Enumerated(EnumType.STRING)
