@@ -53,11 +53,11 @@ enum class JsonValueType {
 )
 @Index(
     name = "search_value_gin",
-    definition = "CREATE INDEX search_value_gin ON data_search_model USING GIN((value->'value'))"
+    definition = "CREATE INDEX search_value_gin ON data_search_model USING GIN((value->'value') jsonb_path_ops)"
 )
 @Index(
     name = "search_gin",
-    definition = "CREATE INDEX search_gin ON data_search_model USING GIN(value)"
+    definition = "CREATE INDEX search_gin ON data_search_model USING GIN(value jsonb_path_ops)"
 )
 class DataSearchModel(
 

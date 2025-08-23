@@ -125,39 +125,14 @@ class DtoGeneratorProcessor : AbstractProcessor() {
         fields: List<VariableElement>,
         additionalExclusions: Array<String>
     ) {
-        val createDtoName = "${className}CreateDto"
-        val exclusions = DEFAULT_CREATE_EXCLUSIONS + additionalExclusions.toSet()
-
-        val includedFields = fields.filter { field ->
-            field.simpleName.toString() !in exclusions
-        }
-
-        val createDtoBuilder = TypeSpec.classBuilder(createDtoName)
-            .addModifiers(KModifier.DATA)
-
-        val constructorBuilder = FunSpec.constructorBuilder()
-
-        includedFields.forEach { field ->
-            val fieldName = field.simpleName.toString()
-            val fieldType = getKotlinTypeName(field)
-
-            val property = PropertySpec.builder(fieldName, fieldType)
-                .initializer(fieldName)
-                .build()
-
-            createDtoBuilder.addProperty(property)
-            constructorBuilder.addParameter(fieldName, fieldType)
-        }
-
-        createDtoBuilder.primaryConstructor(constructorBuilder.build())
-
-        val fileSpec = FileSpec.builder("${packageName}.dto", createDtoName)
-            .addType(createDtoBuilder.build())
-            .build()
-
-        val kaptKotlinGeneratedDirFile = File(kaptKotlinGeneratedDir)
-        kaptKotlinGeneratedDirFile.mkdirs()
-        fileSpec.writeTo(kaptKotlinGeneratedDirFile)
+        generateDto(
+            packageName = packageName,
+            className = className,
+            dtoSuffix = "CreateDto",
+            fields = fields,
+            defaultExclusions = DEFAULT_CREATE_EXCLUSIONS,
+            additionalExclusions = additionalExclusions
+        )
     }
 
     private fun generateViewDto(
@@ -166,14 +141,32 @@ class DtoGeneratorProcessor : AbstractProcessor() {
         fields: List<VariableElement>,
         additionalExclusions: Array<String>
     ) {
-        val viewDtoName = "${className}ViewDto"
-        val exclusions = DEFAULT_VIEW_EXCLUSIONS + additionalExclusions.toSet()
+        generateDto(
+            packageName = packageName,
+            className = className,
+            dtoSuffix = "ViewDto",
+            fields = fields,
+            defaultExclusions = DEFAULT_VIEW_EXCLUSIONS,
+            additionalExclusions = additionalExclusions
+        )
+    }
+
+    private fun generateDto(
+        packageName: String,
+        className: String,
+        dtoSuffix: String,
+        fields: List<VariableElement>,
+        defaultExclusions: Set<String>,
+        additionalExclusions: Array<String>
+    ) {
+        val dtoName = "${className}${dtoSuffix}"
+        val exclusions = defaultExclusions + additionalExclusions.toSet()
 
         val includedFields = fields.filter { field ->
             field.simpleName.toString() !in exclusions
         }
 
-        val viewDtoBuilder = TypeSpec.classBuilder(viewDtoName)
+        val dtoBuilder = TypeSpec.classBuilder(dtoName)
             .addModifiers(KModifier.DATA)
 
         val constructorBuilder = FunSpec.constructorBuilder()
@@ -186,14 +179,14 @@ class DtoGeneratorProcessor : AbstractProcessor() {
                 .initializer(fieldName)
                 .build()
 
-            viewDtoBuilder.addProperty(property)
+            dtoBuilder.addProperty(property)
             constructorBuilder.addParameter(fieldName, fieldType)
         }
 
-        viewDtoBuilder.primaryConstructor(constructorBuilder.build())
+        dtoBuilder.primaryConstructor(constructorBuilder.build())
 
-        val fileSpec = FileSpec.builder("${packageName}.dto", viewDtoName)
-            .addType(viewDtoBuilder.build())
+        val fileSpec = FileSpec.builder("${packageName}.dto", dtoName)
+            .addType(dtoBuilder.build())
             .build()
 
         val kaptKotlinGeneratedDirFile = File(kaptKotlinGeneratedDir)
@@ -234,7 +227,7 @@ class DtoGeneratorProcessor : AbstractProcessor() {
                     }
                 }
             }.copy(nullable = true) // Make all fields nullable for DTOs
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Fallback to Any? if we can't determine the type
             ANY.copy(nullable = true)
         }
