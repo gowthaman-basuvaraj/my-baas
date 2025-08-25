@@ -2,7 +2,7 @@ package my.baas.auth
 
 import my.baas.models.TenantModel
 
-data class User(
+data class UserContext(
     val userId: String,
     val tenant: TenantModel? = null,
     val clientIp: String? = null
@@ -10,18 +10,18 @@ data class User(
 
 object CurrentUser {
 
-    private val user = object : ThreadLocal<User>() {
-        override fun initialValue(): User {
-            return User("anonymous", null)
+    private val userContext = object : ThreadLocal<UserContext>() {
+        override fun initialValue(): UserContext {
+            return UserContext("anonymous")
         }
     }
 
-    fun get(): User = user.get()
+    fun get(): UserContext = userContext.get()
 
-    fun set(user: User) = CurrentUser.user.set(user)
+    fun set(userContext: UserContext) = CurrentUser.userContext.set(userContext)
 
-    fun getTenant(): TenantModel? = user.get().tenant
+    fun getTenant(): TenantModel? = userContext.get().tenant
 
 
-    fun clear() = user.remove()
+    fun clear() = userContext.remove()
 }

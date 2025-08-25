@@ -19,7 +19,7 @@ object AuthHandler {
             .eq("isActive", true)
             .findOne()
 
-        CurrentUser.set(User("", tenant))
+        CurrentUser.set(UserContext("", tenant))
     }
 
     val handle: Handler = Handler { ctx ->
@@ -56,7 +56,7 @@ object AuthHandler {
             }
 
             // Set user with tenant and client IP
-            CurrentUser.set(User(userId, tenant, clientIp))
+            CurrentUser.set(UserContext(userId, tenant, clientIp))
             logger.debug("Set tenant: ${tenant.name} for user: $userId from IP: $clientIp")
 
         } catch (e: Exception) {
