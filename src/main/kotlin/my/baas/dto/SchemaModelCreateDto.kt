@@ -12,7 +12,7 @@ data class SchemaModelCreateDto(
     val jsonSchema: Map<String, Any>,
     val versionName: String,
     val uniqueIdentifierFormatter: String,
-    val indexedJsonPaths: Map<String, Boolean> = emptyMap(),
+    val indexedJsonPaths: List<String> = emptyList(),
     val lifecycleScripts: Map<LifecycleEvent, String> = emptyMap(),
     val isValidationEnabled: Boolean = true
 ) {

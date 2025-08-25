@@ -39,13 +39,6 @@ object DataModelController {
         ctx.json(dataModels)
     }
 
-    fun search(ctx: Context) {
-        val entityName = ctx.pathParam("entityName")
-
-        val searchRequest = ctx.bodyAsClass(SearchRequest::class.java)
-        val dataModels = dataModelService.searchWithFilters(entityName, searchRequest)
-        ctx.json(dataModels)
-    }
 
     fun update(ctx: Context) {
         val uniqueIdentifier = ctx.pathParam("uniqueIdentifier")
@@ -120,20 +113,4 @@ object DataModelController {
         ctx.json(subscriptions)
     }
 
-    fun reindexDataModels(ctx: Context) {
-        data class ReindexRequest(
-            val modifiedAfter: String  // ISO-8601 format
-        )
-
-        try {
-            val request = ctx.bodyAsClass(ReindexRequest::class.java)
-            val modifiedAfterInstant = Instant.parse(request.modifiedAfter)
-
-            val result = dataModelService.reindexDataModels(ctx.pathParam("entityName"), modifiedAfterInstant)
-            ctx.json(result)
-
-        } catch (e: Exception) {
-            throw BadRequestResponse("Invalid request format. Expected: {\"entityName\": \"optional\", \"modifiedAfter\": \"2024-01-01T00:00:00Z\"}")
-        }
-    }
 }

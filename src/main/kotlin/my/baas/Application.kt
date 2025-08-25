@@ -77,9 +77,7 @@ fun main() {
                             before {
                                 dataModelService.validateSchemaExistsForEntity(it.pathParam("entityName"))
                             }
-                            post("reindex", DataModelController::reindexDataModels)
                             get(DataModelController::getAll)
-                            post("search", DataModelController::search)
                             path("{versionName}") {
                                 before {
                                     dataModelService.validateSchemaExistsForEntityAndVersion(

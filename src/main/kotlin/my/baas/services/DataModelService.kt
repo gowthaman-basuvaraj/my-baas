@@ -10,30 +10,18 @@ import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.config.AppContext.objectMapper
-import my.baas.controllers.SearchRequest
 import my.baas.models.*
 import my.baas.repositories.DataRepository
 import my.baas.repositories.DataRepositoryImpl
-import my.baas.repositories.DataSearchRepository
-import my.baas.repositories.DataSearchRepositoryImpl
 import org.slf4j.LoggerFactory
+import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.*
 
-enum class SearchType {
-    EQ,    // Equal
-    HAS,   // Contains
-    LT,    // Less than
-    LE,    // Less than or equal
-    GT,    // Greater than
-    GE     // Greater than or equal
-}
 
 class DataModelService(
     private val repository: DataRepository = DataRepositoryImpl(),
-    private val searchRepository: DataSearchRepository = DataSearchRepositoryImpl(),
-    private val jsonPathExtractor: JsonPathExtractor = JsonPathExtractor,
     private val jsExecutionService: JavaScriptExecutionService = JavaScriptExecutionService,
     private val eventManager: WebSocketEventManager = WebSocketEventManager,
     private val redisPublisher: RedisEventPublisher = RedisEventPublisher
@@ -59,7 +47,6 @@ class DataModelService(
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.BEFORE_SAVE, dataModel)
 
         val savedDataModel = repository.save(dataModel)
-        indexDataModel(savedDataModel)
 
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, savedDataModel)
@@ -82,15 +69,6 @@ class DataModelService(
         return repository.findAllByEntityName(entityName, versionName, pageNo, pageSize)
     }
 
-    fun searchWithFilters(entityName: String, searchRequest: SearchRequest): List<DataModel> {
-        val uniqueIdentifiers = searchRepository.searchWithMultipleFilters(entityName, searchRequest)
-
-        if (uniqueIdentifiers.isEmpty()) {
-            return emptyList()
-        }
-
-        return repository.findByUniqueIdentifiers(entityName, uniqueIdentifiers)
-    }
 
     fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel? {
         val dataModel = repository.findByUniqueIdentifier(entityName, uniqueIdentifier)
@@ -118,11 +96,7 @@ class DataModelService(
         // Execute beforeSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.BEFORE_SAVE, existingDataModel, oldData)
 
-        // Remove old indexed data
-        searchRepository.deleteByEntityNameAndUniqueIdentifier(entityName, uniqueIdentifier)
-
         val updatedDataModel = repository.update(existingDataModel)
-        indexDataModel(updatedDataModel)
 
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, updatedDataModel, oldData)
@@ -165,11 +139,7 @@ class DataModelService(
         // Execute beforeSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.BEFORE_SAVE, existingDataModel, oldData)
 
-        // Remove old indexed data
-        searchRepository.deleteByEntityNameAndUniqueIdentifier(entityName, uniqueIdentifier)
-
         val updatedDataModel = repository.update(existingDataModel)
-        indexDataModel(updatedDataModel)
 
         // Execute afterSave hook
         jsExecutionService.executeLifecycleScript(schema, LifecycleEvent.AFTER_SAVE, updatedDataModel, oldData)
@@ -193,9 +163,6 @@ class DataModelService(
         val dataModel = repository.findByUniqueIdentifier(entityName, uniqueIdentifier) ?: return false
         // Execute beforeDelete hook
         jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.BEFORE_DELETE, dataModel)
-
-        // Remove indexed data
-        searchRepository.deleteByEntityNameAndUniqueIdentifier(dataModel.entityName, uniqueIdentifier)
 
         val deleted = repository.deleteByUniqueIdentifier(entityName, uniqueIdentifier)
 
@@ -302,14 +269,8 @@ class DataModelService(
         // Validate the migrated data against the new schema
         validateDataAgainstSchema(existingDataModel)
 
-        // Remove old indexed data
-        searchRepository.deleteByEntityNameAndUniqueIdentifier(entityName, uniqueIdentifier)
-
         // Save the updated model
         val updatedDataModel = repository.update(existingDataModel)
-
-        // Re-index with new schema's indexed paths
-        indexDataModel(updatedDataModel)
 
         // Log audit trail
         AuditService.logDataModelAction(
@@ -331,75 +292,6 @@ class DataModelService(
         return updatedDataModel
     }
 
-    fun reindexDataModels(entityName: String?, modifiedAfter: Instant): Map<String, Any?> {
-        val startTime = System.currentTimeMillis()
-
-        try {
-            val query = AppContext.db.find(DataModel::class.java).where()
-
-            // Filter by entity name if provided
-            entityName?.let { query.eq("entityName", it) }
-
-            // Filter by modification date
-            query.ge("whenModified", modifiedAfter)
-
-            val dataModels = query.findList()
-
-            var reindexedCount = 0
-            val errors = mutableListOf<String>()
-
-            dataModels.forEach { dataModel ->
-                try {
-                    // Remove old indexed data first
-                    searchRepository.deleteByEntityNameAndUniqueIdentifier(
-                        dataModel.entityName,
-                        dataModel.uniqueIdentifier
-                    )
-
-                    // Re-index the data model
-                    indexDataModel(dataModel)
-                    reindexedCount++
-
-                    // Log audit trail for re-indexing
-                    AuditService.logAction(
-                        AuditAction.RE_INDEX,
-                        dataModel.entityName,
-                        dataModel.uniqueIdentifier,
-                        notes = "Re-indexed data model modified after $modifiedAfter"
-                    )
-
-                } catch (e: Exception) {
-                    val error = "Failed to re-index ${dataModel.entityName}/${dataModel.uniqueIdentifier}: ${e.message}"
-                    errors.add(error)
-                    logger.error(error, e)
-                }
-            }
-
-            val duration = System.currentTimeMillis() - startTime
-
-            return mapOf(
-                "success" to true,
-                "totalFound" to dataModels.size,
-                "reindexedCount" to reindexedCount,
-                "errors" to errors,
-                "durationMs" to duration,
-                "entityName" to entityName,
-                "modifiedAfter" to modifiedAfter.toString()
-            )
-
-        } catch (e: Exception) {
-            val duration = System.currentTimeMillis() - startTime
-            logger.error("Re-indexing operation failed", e)
-
-            return mapOf(
-                "success" to false,
-                "error" to e.message,
-                "durationMs" to duration,
-                "entityName" to entityName,
-                "modifiedAfter" to modifiedAfter.toString()
-            )
-        }
-    }
 
     private fun validateDataAgainstSchema(dataModel: DataModel) {
         // Skip validation if disabled for this schema
@@ -463,7 +355,7 @@ class DataModelService(
             identifier = identifier.replace("{$key}", value.toString())
         }
 
-        return identifier.replace(Regex("[^a-zA-Z0-9_\\-\\/]"), "").uppercase()
+        return identifier.replace(Regex("[^a-zA-Z0-9_\\-/]"), "").uppercase()
     }
 
     private fun publishEvent(
@@ -494,43 +386,6 @@ class DataModelService(
         }
     }
 
-    private fun indexDataModel(dataModel: DataModel) {
-        val indexedPaths = dataModel.schema.indexedJsonPaths
-        if (indexedPaths.isEmpty()) return
-
-        val searchEntities = mutableListOf<DataSearchModel>()
-
-        indexedPaths.forEach { (jsonPathStr, shouldIndex) ->
-            if (shouldIndex) {
-                val extractedValues = jsonPathExtractor.extractValueWithArrayIndex(dataModel.data, jsonPathStr)
-
-                extractedValues.forEach { extractedValue ->
-                    val valueMap = jsonPathExtractor.createValueMap(extractedValue.value)
-                    val jsonValueType = JsonValueType.determineJsonValueType(extractedValue.value)
-
-                    val searchEntity = DataSearchModel(
-                        entityName = dataModel.entityName,
-                        uniqueIdentifier = dataModel.uniqueIdentifier,
-                        jsonPath = jsonPathStr,
-                        value = valueMap,
-                        valueType = jsonValueType,
-                        arrayIdx = extractedValue.arrayIndex,
-                        dataCreatedAt = dataModel.whenCreated,
-                        dataModifiedAt = dataModel.whenModified
-                    )
-
-                    // Set tenant information for the search entity
-                    searchEntity.tenantId = dataModel.tenantId
-
-                    searchEntities.add(searchEntity)
-                }
-            }
-        }
-
-        if (searchEntities.isNotEmpty()) {
-            searchRepository.saveAll(searchEntities)
-        }
-    }
 
     @Suppress("UNCHECKED_CAST")
     private fun deepMergeData(existing: Map<String, Any>, patch: Map<String, Any>): Map<String, Any> {

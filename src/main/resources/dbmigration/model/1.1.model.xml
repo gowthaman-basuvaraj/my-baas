@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<migration xmlns="http://ebean-orm.github.io/xml/ns/dbmigration">
+    <changeSet type="apply">
+        <alterForeignKey name="fk_data_model_schema_id" columnNames="DROP FOREIGN KEY" indexName="ix_data_model_schema_id" tableName="data_model"/>
+        <dropIndex indexName="ix_data_model_data" tableName="data_model"/>
+        <dropIndex indexName="ix_data_model_tenant_id" tableName="data_model"/>
+        <dropIndex indexName="search_value_numeric" tableName="data_search_model"/>
+        <dropIndex indexName="search_value_text" tableName="data_search_model"/>
+        <dropIndex indexName="search_value_boolean" tableName="data_search_model"/>
+        <dropIndex indexName="search_value_gin" tableName="data_search_model"/>
+        <dropIndex indexName="search_gin" tableName="data_search_model"/>
+        <dropIndex indexName="ix_data_search_model_tenant_id" tableName="data_search_model"/>
+        <dropIndex indexName="ix_data_search_model_entity_name" tableName="data_search_model"/>
+    </changeSet>
+    <changeSet type="pendingDrops">
+        <dropTable name="data_model" sequenceCol="id"/>
+        <dropTable name="data_search_model" sequenceCol="id"/>
+    </changeSet>
+</migration>

@@ -11,7 +11,7 @@ Goals
 - Define Authentication
 - CRUD APIs
   - Validate with Schema
-  - Search Using the Search Fields (search fields are indexed separately in another table, yet to find another solution where jsonb can be indexed and searched easily)
+  - Search Using the Search Fields (btree index will be created on search fields, gin index on 1st and 2nd level)
 - Optional JavaScript function execution
   - beforeSave
   - afterSave

@@ -129,3 +129,4 @@ gradle-app.setting
 # AI tools
 .claude
 .gemini
+app*.log*

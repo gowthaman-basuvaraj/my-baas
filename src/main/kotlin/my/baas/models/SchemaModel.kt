@@ -26,11 +26,22 @@ class SchemaModel(
     var uniqueIdentifierFormatter: String,
 
     @DbJsonB
-    var indexedJsonPaths: Map<String, Boolean> = emptyMap(),
+    var indexedJsonPaths: List<String> = emptyList(),
 
     @DbJsonB
     var lifecycleScripts: Map<LifecycleEvent, String> = emptyMap(),
 
     var isValidationEnabled: Boolean = true
 
-) : BaseTenantModel()
+) : BaseTenantModel() {
+
+    fun generateTableName(): String {
+        return generateTableName(tenantId, entityName)
+    }
+    
+    companion object {
+        fun generateTableName(tenantId: Long, entityName: String): String {
+            return "data_model_${tenantId}_${entityName.lowercase()}"
+        }
+    }
+}

@@ -14,7 +14,7 @@ data class SchemaModelViewDto(
     val jsonSchema: Map<String, Any>,
     val versionName: String,
     val uniqueIdentifierFormatter: String,
-    val indexedJsonPaths: Map<String, Boolean>,
+    val indexedJsonPaths: List<String>,
     val lifecycleScripts: Map<LifecycleEvent, String>,
     val isValidationEnabled: Boolean,
     val whenCreated: Instant,

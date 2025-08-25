@@ -2,12 +2,11 @@ package my.baas.models
 
 import io.ebean.annotation.DbJsonB
 import io.ebean.annotation.Index
+import io.ebean.annotation.Sql
 import jakarta.persistence.Entity
 import jakarta.persistence.ManyToOne
 
-@Entity
-@Index(columnNames = ["unique_identifier", "entity_name", "version_name", "tenant_id"], unique = true)
-@Index(columnNames = ["data"], definition = "CREATE INDEX search_gin_data ON data_model USING GIN(data jsonb_path_ops)")
+@Sql
 class DataModel(
 
     @ManyToOne
