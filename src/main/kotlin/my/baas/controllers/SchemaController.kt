@@ -7,8 +7,8 @@ import my.baas.config.AppContext
 import my.baas.dto.SchemaModelCreateDto
 import my.baas.dto.SchemaModelViewDto
 import my.baas.models.SchemaModel
-import my.baas.services.TenantLimitService
 import my.baas.services.TableManagementService
+import my.baas.services.TenantLimitService
 
 object SchemaController : CrudHandler {
 
