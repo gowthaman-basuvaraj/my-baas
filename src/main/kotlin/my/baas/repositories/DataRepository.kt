@@ -11,6 +11,7 @@ import my.baas.dto.FilterOperator
 import my.baas.models.DataModel
 import my.baas.models.SchemaModel
 import my.baas.services.TableManagementService.parseJsonPathToChain
+import org.slf4j.LoggerFactory
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -29,6 +30,7 @@ interface DataRepository {
 
 class DataRepositoryImpl : DataRepository {
     private val objectMapper = jacksonObjectMapper()
+    private val logger = LoggerFactory.getLogger("DataRepo")
 
     private fun createDataModelRawSql(sql: String): RawSql {
         return RawSqlBuilder.parse(sql)
@@ -294,6 +296,8 @@ class DataRepositoryImpl : DataRepository {
             ORDER BY when_created DESC
         """.trimIndent()
 
+        logger.warn("Constructed Query [$sql] from $filters")
+
         val rawSql = createDataModelRawSql(sql)
 
         val query = AppContext.db.find(DataModel::class.java)
@@ -312,59 +316,59 @@ class DataRepositoryImpl : DataRepository {
 
     private fun buildFilterCondition(filter: FilterDto, index: Int): Pair<String, Map<String, Any>> {
         val paramKey = "filter$index"
-        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
-
-        return when (filter.operator) {
-            FilterOperator.EQ -> {
-                "($jsonPathChain)::text = :$paramKey" to mapOf(paramKey to filter.value)
+        val operator = filter.operator.getOperatorSymbol()
+        
+        return when {
+            filter.operator.isListOperator() -> {
+                buildListOperatorCondition(filter, paramKey, operator)
             }
-
-            FilterOperator.NE -> {
-                "($jsonPathChain)::text != :$paramKey" to mapOf(paramKey to filter.value)
+            filter.operator.requiresJsonSerialization() -> {
+                buildJsonOperatorCondition(filter, paramKey, operator)
             }
-
-            FilterOperator.LT, FilterOperator.LE, FilterOperator.GT, FilterOperator.GE -> {
-                val operator = when (filter.operator) {
-                    FilterOperator.LT -> "<"
-                    FilterOperator.LE -> "<="
-                    FilterOperator.GT -> ">"
-                    FilterOperator.GE -> ">="
-                    else -> throw IllegalArgumentException("Unexpected operator")
-                }
-                "($jsonPathChain)::numeric $operator :$paramKey" to mapOf(paramKey to filter.value)
+            filter.operator.usesDataRoot() -> {
+                buildDataRootOperatorCondition(filter, paramKey, operator)
             }
-
-            FilterOperator.IN, FilterOperator.NOT_IN -> {
-                val values = filter.getListValue()
-                val placeholders = values.mapIndexed { i, _ -> ":${paramKey}_$i" }.joinToString(",")
-                val parameters = values.mapIndexed { i, value -> "${paramKey}_$i" to (value ?: "") }.toMap()
-                val operator = if (filter.operator == FilterOperator.IN) "IN" else "NOT IN"
-                "($jsonPathChain)::text $operator ($placeholders)" to parameters
+            filter.operator == FilterOperator.HAS_KEY -> {
+                val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
+                "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
             }
-
-            FilterOperator.CONTAINS, FilterOperator.CONTAINED_BY -> {
-                val operator = if (filter.operator == FilterOperator.CONTAINS) "@>" else "<@"
-                "$jsonPathChain $operator cast(:$paramKey as jsonb)" to mapOf(
-                    paramKey to objectMapper.writeValueAsString(
-                        filter.value
-                    )
-                )
-            }
-
-            FilterOperator.HAS_KEY -> {
-                "$jsonPathChain ? :$paramKey" to mapOf(paramKey to filter.value.toString())
-            }
-
-            FilterOperator.HAS_ANY_KEYS, FilterOperator.HAS_ALL_KEYS -> {
-                val keys = filter.getListValue().map { it.toString() }.toTypedArray()
-                val operator = if (filter.operator == FilterOperator.HAS_ANY_KEYS) "?|" else "?&"
-                "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to keys)
-            }
-
-            FilterOperator.PATH_EXISTS, FilterOperator.PATH_MATCH -> {
-                val operator = if (filter.operator == FilterOperator.PATH_EXISTS) "@?" else "@@"
-                "data $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
+            else -> {
+                buildSimpleOperatorCondition(filter, paramKey, operator)
             }
         }
+    }
+    
+    private fun buildSimpleOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
+        val castType = if (filter.operator.requiresNumericCasting()) "numeric" else "text"
+        return "($jsonPathChain)::$castType $operator :$paramKey" to mapOf(paramKey to filter.value)
+    }
+    
+    private fun buildListOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
+        val values = filter.getListValue()
+        
+        return when (filter.operator) {
+            FilterOperator.IN, FilterOperator.NOT_IN -> {
+                val placeholders = values.mapIndexed { i, _ -> ":${paramKey}_$i" }.joinToString(",")
+                val parameters = values.mapIndexed { i, value -> "${paramKey}_$i" to (value ?: "") }.toMap()
+                "($jsonPathChain)::text $operator ($placeholders)" to parameters
+            }
+            FilterOperator.HAS_ANY_KEYS, FilterOperator.HAS_ALL_KEYS -> {
+                val keys = values.map { it.toString() }.toTypedArray()
+                "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to keys)
+            }
+            else -> throw IllegalArgumentException("Unsupported list operator: ${filter.operator}")
+        }
+    }
+    
+    private fun buildJsonOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
+        val serializedValue = objectMapper.writeValueAsString(filter.value)
+        return "$jsonPathChain $operator cast(:$paramKey as jsonb)" to mapOf(paramKey to serializedValue)
+    }
+    
+    private fun buildDataRootOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+        return "data $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
     }
 }
