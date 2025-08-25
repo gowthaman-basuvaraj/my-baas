@@ -108,9 +108,5 @@ object DataModelController {
         ctx.json(validationResult)
     }
 
-    fun getActiveSubscriptions(ctx: Context) {
-        val subscriptions = my.baas.services.WebSocketEventManager.getActiveSubscriptions()
-        ctx.json(subscriptions)
-    }
 
 }

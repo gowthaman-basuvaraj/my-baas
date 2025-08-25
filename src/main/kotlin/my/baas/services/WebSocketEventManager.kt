@@ -35,28 +35,20 @@ data class SubscriptionKey(
     val uniqueIdentifier: String? = null
 )
 
-data class ClientInfo(
-    val tenantId: Long,
-    val subscriptions: MutableSet<SubscriptionKey> = CopyOnWriteArraySet()
-)
-
 object WebSocketEventManager {
 
     private val logger = LoggerFactory.getLogger(WebSocketEventManager::class.java)
 
-    // Map of WsContext to their client information (tenant and subscriptions)
-    private val clients = ConcurrentHashMap<WsContext, ClientInfo>()
+    // Map of tenant to WsContext to their subscriptions
     private val tenantClients =
         ConcurrentHashMap<Long, ConcurrentHashMap<WsContext, CopyOnWriteArraySet<SubscriptionKey>>>()
 
-    // Map of subscription keys to clients (for efficient event routing)
-    private val subscriptionClients = ConcurrentHashMap<SubscriptionKey, CopyOnWriteArraySet<WsContext>>()
 
     fun handleConnection(ctx: WsContext, tenantId: Long) {
 
         tenantClients.computeIfAbsent(tenantId) { ConcurrentHashMap() }.putIfAbsent(ctx, CopyOnWriteArraySet())
 
-        logger.debug("WebSocket connection established for tenant: $tenantId")
+        logger.debug("WebSocket connection established for tenant: [$tenantId]")
 
         ctx.send(
             objectMapper.writeValueAsString(
@@ -73,7 +65,7 @@ object WebSocketEventManager {
         // Remove all subscriptions for this client
         tenantClients[tenantId]?.remove(ctx)
 
-        logger.debug("WebSocket connection closed and cleaned up")
+        logger.debug("WebSocket connection closed and cleaned up for tenantId [$tenantId]")
     }
 
     fun handleMessage(ctx: WsContext, message: String, tenantId: Long) {
@@ -195,23 +187,5 @@ object WebSocketEventManager {
             }
         }
 
-    }
-
-    fun getActiveSubscriptions(): Map<String, Any> {
-        return mapOf(
-            "totalClients" to tenantClients.values.sumOf { it.size },
-            "totalSubscriptions" to tenantClients.values.sumOf { it.values.size },
-            "subscriptions" to tenantClients.values.flatMap { tenantSubs ->
-                tenantSubs.values.flatMap {
-                    it.map { key ->
-                        mapOf(
-                            "entityName" to key.entityName,
-                            "uniqueIdentifier" to key.uniqueIdentifier,
-                            "clientCount" to subscriptionClients[key]?.size
-                        )
-                    }
-                }
-            }
-        )
     }
 }

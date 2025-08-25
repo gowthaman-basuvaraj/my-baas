@@ -72,7 +72,6 @@ fun main() {
                         }
                     }
                     path("data") {
-                        get("subscriptions", DataModelController::getActiveSubscriptions)
                         path("{entityName}") {
                             before {
                                 dataModelService.validateSchemaExistsForEntity(it.pathParam("entityName"))
