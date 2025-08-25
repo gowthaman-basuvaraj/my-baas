@@ -118,6 +118,12 @@ class ReportService(
         val jobId = UUID.randomUUID().toString()
         val currentUser = CurrentUser.get()
 
+        if (report.parameters.isNotEmpty()) {
+            if (!report.parameters.all { request.parameters.containsKey(it.name) }) {
+                throw BadRequestResponse("parameters mismatch")
+            }
+        }
+
         val executionLog = ReportExecutionLog().apply {
             this.jobId = jobId
             this.report = report

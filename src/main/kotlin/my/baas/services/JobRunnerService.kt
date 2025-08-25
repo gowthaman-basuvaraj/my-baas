@@ -162,7 +162,11 @@ object JobRunnerService {
                         SET statement_timeout TO '${maxExecutionTimeMs / (60 * 1000)}min';
                         ${executionLog.report.sql}
                     """.trimIndent()
-            )
+            ).apply {
+                executionLog.executionMetadata.entries.forEach { (key, value) ->
+                    setParameter(key, value)
+                }
+            }
             when (executionLog.report.fileFormat) {
                 ReportModel.FileFormat.CSV -> generateCsvFileStreamingly(zipOutputStream, sqlQuery)
                 ReportModel.FileFormat.JSON -> generateJsonFileStreamingly(zipOutputStream, sqlQuery)

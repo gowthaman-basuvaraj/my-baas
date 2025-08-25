@@ -40,6 +40,11 @@ class ReportModel : BaseTenantModel() {
     @Column(nullable = false)
     var fileFormat: FileFormat = FileFormat.CSV
 
+    @DbJsonB
+    var parameters: List<ReportParameter> = emptyList()
+
+    data class ReportParameter(val name: String, val dynamic: Boolean, val value: String? = null)
+
     enum class ExecutionType {
         ADHOC,
         SCHEDULED,
@@ -48,7 +53,8 @@ class ReportModel : BaseTenantModel() {
 
     enum class FileFormat {
         CSV, JSON, XLS, XLSX;
-         fun getContentType(): String {
+
+        fun getContentType(): String {
             return when (this) {
                 CSV -> "text/csv"
                 JSON -> "application/json"
