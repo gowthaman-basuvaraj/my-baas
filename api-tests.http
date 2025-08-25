@@ -166,13 +166,13 @@ Host: {{tenantHost}}
     "required": ["name", "email"]
   },
   "uniqueIdentifierFormatter": "{email}-{timestamp}",
-  "indexedJsonPaths": {
-    "$.name": true,
-    "$.email": true,
-    "$.age": true,
-    "$.address.city": true,
-    "$.tags[*]": true
-  },
+  "indexedJsonPaths": [
+    "name",
+    "email", 
+    "age",
+    "address.city",
+    "tags[*]"
+  ],
   "lifecycleScripts": {
     "BEFORE_SAVE": "console.log('Before save: ' + JSON.stringify(data));",
     "AFTER_SAVE": "console.log('After save: ' + uniqueIdentifier);",
@@ -231,15 +231,15 @@ Host: {{tenantHost}}
     "required": ["firstName", "lastName", "email"]
   },
   "uniqueIdentifierFormatter": "{email}-{timestamp}",
-  "indexedJsonPaths": {
-    "$.firstName": true,
-    "$.lastName": true,
-    "$.email": true,
-    "$.age": true,
-    "$.address.city": true,
-    "$.address.postalCode": true,
-    "$.tags[*]": true
-  },
+  "indexedJsonPaths": [
+    "firstName",
+    "lastName",
+    "email",
+    "age",
+    "address.city",
+    "address.postalCode",
+    "tags[*]"
+  ],
   "lifecycleScripts": {
     "MIGRATE_VERSION": "// Split name into firstName and lastName\nif (oldVersion === 'v1' && newVersion === 'v2') {\n  var nameParts = (data.name || '').split(' ');\n  data.firstName = nameParts[0] || '';\n  data.lastName = nameParts.slice(1).join(' ') || '';\n  delete data.name;\n}\nreturn data;",
     "BEFORE_SAVE": "console.log('Before save v2: ' + JSON.stringify(data));",
@@ -292,10 +292,10 @@ Host: {{tenantHost}}
     "required": ["name", "email"]
   },
   "uniqueIdentifierFormatter": "{email}",
-  "indexedJsonPaths": {
-    "$.name": true,
-    "$.email": true
-  },
+  "indexedJsonPaths": [
+    "name",
+    "email"
+  ],
   "isValidationEnabled": true
 }
 
@@ -504,7 +504,7 @@ Host: {{tenantHost}}
 
 ###
 
-### Search data models - Single filter
+### Search data models - Single filter (Greater Than)
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
@@ -513,16 +513,18 @@ Host: {{tenantHost}}
 {
   "filters": [
     {
-      "jsonPath": "$.age",
-      "searchType": "GT",
+      "jsonPath": "age",
+      "operator": "GT",
       "value": 25
     }
-  ]
+  ],
+  "pageNo": 1,
+  "pageSize": 10
 }
 
 ###
 
-### Search data models - Multiple filters with EQ
+### Search data models - Multiple filters (EQ and GE)
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
@@ -531,21 +533,23 @@ Host: {{tenantHost}}
 {
   "filters": [
     {
-      "jsonPath": "$.address.city",
-      "searchType": "EQ",
+      "jsonPath": "address.city",
+      "operator": "EQ",
       "value": "New York"
     },
     {
-      "jsonPath": "$.age",
-      "searchType": "GE",
+      "jsonPath": "age",
+      "operator": "GE",
       "value": 30
     }
-  ]
+  ],
+  "pageNo": 1,
+  "pageSize": 10
 }
 
 ###
 
-### Search data models - Contains search for arrays
+### Search data models - String contains
 POST {{baseUrl}}/api/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
@@ -554,11 +558,33 @@ Host: {{tenantHost}}
 {
   "filters": [
     {
-      "jsonPath": "$.tags[*]",
-      "searchType": "HAS",
-      "value": "developer"
+      "jsonPath": "name",
+      "operator": "EQ",
+      "value": "John Doe"
     }
-  ]
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search data models - Array contains (IN operator)
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "tags[*]",
+      "operator": "CONTAINS",
+      "value": ["developer"]
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
 }
 
 ###
@@ -572,11 +598,13 @@ Host: {{tenantHost}}
 {
   "filters": [
     {
-      "jsonPath": "$.age",
-      "searchType": "LT",
+      "jsonPath": "age",
+      "operator": "LT",
       "value": 30
     }
-  ]
+  ],
+  "pageNo": 1,
+  "pageSize": 10
 }
 
 ###
@@ -590,11 +618,195 @@ Host: {{tenantHost}}
 {
   "filters": [
     {
-      "jsonPath": "$.age",
-      "searchType": "LE",
+      "jsonPath": "age",
+      "operator": "LE",
       "value": 30
     }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search with NOT_IN operator
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "address.city",
+      "operator": "NOT_IN",
+      "value": ["New York", "Boston"]
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search with HAS_KEY operator (check if JSON has a key)
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "address",
+      "operator": "HAS_KEY",
+      "value": "postalCode"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search with HAS_ANY_KEYS operator
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "address",
+      "operator": "HAS_ANY_KEYS",
+      "value": ["street", "apartment"]
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search with CONTAINED_BY operator (subset check)
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "tags",
+      "operator": "CONTAINED_BY",
+      "value": ["developer", "javascript", "backend", "frontend", "designer"]
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search with invalid JSON path (should return error)
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "invalid..path",
+      "operator": "EQ",
+      "value": "test"
+    }
   ]
+}
+
+###
+
+### Search with empty filters (should return all data)
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [],
+  "pageNo": 1,
+  "pageSize": 5
+}
+
+###
+
+### Search with PATH_EXISTS operator (JSONPath query)
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "",
+      "operator": "PATH_EXISTS",
+      "value": "$.address.street"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search with NE (Not Equal) operator
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "address.city",
+      "operator": "NE",
+      "value": "New York"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Complex search with multiple operators
+POST {{baseUrl}}/api/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "age",
+      "operator": "GT",
+      "value": 20
+    },
+    {
+      "jsonPath": "age",
+      "operator": "LT",
+      "value": 40
+    },
+    {
+      "jsonPath": "address.country",
+      "operator": "EQ",
+      "value": "USA"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
 }
 
 ###
@@ -744,10 +956,10 @@ Host: {{tenantHost}}
     "required": ["name", "price"]
   },
   "uniqueIdentifierFormatter": "{name}-{timestamp}",
-  "indexedJsonPaths": {
-    "$.name": true,
-    "$.price": true
-  },
+  "indexedJsonPaths": [
+    "name",
+    "price"
+  ],
   "isValidationEnabled": false
 }
 
