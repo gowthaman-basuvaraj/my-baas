@@ -10,6 +10,7 @@ import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.config.AppContext.objectMapper
+import my.baas.dto.FilterDto
 import my.baas.models.AuditAction
 import my.baas.models.DataModel
 import my.baas.models.SchemaModel
@@ -67,6 +68,17 @@ class DataModelService(
         pageSize: Int
     ): PagedList<DataModel> {
         return repository.findAllByEntityName(entityName, versionName, pageNo, pageSize)
+    }
+
+    fun search(entityName: String, filters: List<FilterDto>, pageNo: Int, pageSize: Int): PagedList<DataModel> {
+        val results = repository.search(entityName, filters, pageNo, pageSize)
+        
+        // Execute afterLoad hook for each result
+        results.list.forEach { dataModel ->
+            jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.AFTER_LOAD, dataModel)
+        }
+        
+        return results
     }
 
 

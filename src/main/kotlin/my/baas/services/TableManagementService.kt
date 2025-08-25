@@ -1,5 +1,6 @@
 package my.baas.services
 
+import com.jayway.jsonpath.JsonPath
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.models.SchemaModel
@@ -139,13 +140,50 @@ object TableManagementService {
      * - "items[0].value" -> "data -> 'items' -> 0 -> 'value'" (specific array index)
      * - "nested.array[*].field" -> "data -> 'nested' -> 'array'" (indexes the array container)
      */
-    private fun parseJsonPathToChain(jsonPath: String): String {
+    fun parseJsonPathToChain(jsonPath: String): String {
+        // Validate JSON path using JsonPath library
+        if (jsonPath.isBlank()) {
+            throw IllegalArgumentException("JSON path cannot be empty or blank")
+        }
+
+        try {
+            val openBrack = jsonPath.count { it == '[' }
+            val closeBrack = jsonPath.count { it == ']' }
+            if (openBrack != closeBrack) throw IllegalArgumentException("Brackets do not match Open = $openBrack, Close = $closeBrack")
+            JsonPath.compile("$.$jsonPath")
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Invalid JSON path: '$jsonPath' - ${e.message}", e)
+        }
+
+        // Use JsonPath's internal path structure to build PostgreSQL query
+        return buildPostgreSQLPath(jsonPath)
+    }
+
+    private fun buildPostgreSQLPath(originalPath: String): String {
+        // For PostgreSQL JSONB queries, we need to convert JsonPath to -> operator chain
+        // Handle common patterns:
+
+        // Check for wildcard arrays - if path contains [*], index only up to the array
+        if (originalPath.contains("[*]")) {
+            val wildcardIndex = originalPath.indexOf("[*]")
+            val pathBeforeWildcard = originalPath.take(wildcardIndex)
+            return if (pathBeforeWildcard.isEmpty()) {
+                "data"
+            } else {
+                buildSimplePath(pathBeforeWildcard)
+            }
+        }
+
+        // For regular paths, build the full chain
+        return buildSimplePath(originalPath)
+    }
+
+    private fun buildSimplePath(path: String): String {
         val parts = mutableListOf<String>()
         var current = ""
         var inBrackets = false
-        var foundWildcard = false
 
-        for (char in jsonPath) {
+        for (char in path) {
             when {
                 char == '.' && !inBrackets -> {
                     if (current.isNotEmpty()) {
@@ -164,14 +202,8 @@ object TableManagementService {
 
                 char == ']' -> {
                     if (current.isNotEmpty()) {
-                        if (current == "*") {
-                            // Wildcard found - stop parsing here and index the array container
-                            foundWildcard = true
-                            break
-                        } else {
-                            // Specific array index should be unquoted
-                            parts.add(current)
-                        }
+                        // Array index should be unquoted (numeric)
+                        parts.add(current)
                         current = ""
                     }
                     inBrackets = false
@@ -183,13 +215,12 @@ object TableManagementService {
             }
         }
 
-        // If no wildcard found, add the remaining current part
-        if (!foundWildcard && current.isNotEmpty()) {
+        // Add remaining part
+        if (current.isNotEmpty()) {
             parts.add("'$current'")
         }
-        if (parts.isEmpty()) return ""
 
-        return "data -> ${parts.joinToString(" -> ")}"
+        return if (parts.isEmpty()) "data" else "data -> ${parts.joinToString(" -> ")}"
     }
 
     @JvmStatic
@@ -197,7 +228,7 @@ object TableManagementService {
         println("Testing parseJsonPathToChain function:")
         println("=".repeat(50))
 
-        val testCases = listOf(
+        val validTestCases = listOf(
             // Basic field access
             "user" to "data -> 'user'",
             "user.name" to "data -> 'user' -> 'name'",
@@ -222,16 +253,27 @@ object TableManagementService {
             "settings.notifications[0].enabled" to "data -> 'settings' -> 'notifications' -> 0 -> 'enabled'",
             "config.servers[*].config.port" to "data -> 'config' -> 'servers'",
 
-            // Edge cases
-            "" to "",
+            // Valid edge cases
             "single" to "data -> 'single'",
             "array[10]" to "data -> 'array' -> 10"
+        )
+
+        val invalidTestCases = listOf(
+            "",              // Empty path
+            "   ",           // Whitespace  
+            "user[0",        // Unclosed bracket
+            "user0]",        // Unopened bracket
+            "user[[0]]",     // Nested brackets
+            "user[0.5]"      // Invalid array index
         )
 
         var passed = 0
         var failed = 0
 
-        testCases.forEach { (input, expected) ->
+        // Test valid cases
+        println("Testing valid JSON paths:")
+        println("-".repeat(30))
+        validTestCases.forEach { (input, expected) ->
             try {
                 val result = parseJsonPathToChain(input)
                 if (result == expected) {
@@ -245,6 +287,23 @@ object TableManagementService {
                 }
             } catch (e: Exception) {
                 println("✗ ERROR: '$input' threw exception: ${e.message}")
+                failed++
+            }
+        }
+
+        println()
+        println("Testing invalid JSON paths (should throw exceptions):")
+        println("-".repeat(50))
+        invalidTestCases.forEach { input ->
+            try {
+                val result = parseJsonPathToChain(input)
+                println("✗ FAIL: '$input' should have thrown exception but got: '$result'")
+                failed++
+            } catch (e: IllegalArgumentException) {
+                println("✓ PASS: '$input' correctly threw: ${e.message}")
+                passed++
+            } catch (e: Exception) {
+                println("✗ FAIL: '$input' threw unexpected exception: ${e.javaClass.simpleName}: ${e.message}")
                 failed++
             }
         }

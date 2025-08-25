@@ -2,6 +2,7 @@ package my.baas.controllers
 
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
+import my.baas.dto.SearchRequestDto
 import my.baas.services.DataModelService
 import kotlin.math.max
 
@@ -106,5 +107,18 @@ object DataModelController {
         ctx.json(validationResult)
     }
 
+    fun search(ctx: Context) {
+        val entityName = ctx.pathParam("entityName")
+        val searchRequest = ctx.bodyAsClass(SearchRequestDto::class.java)
+        
+        val results = dataModelService.search(
+            entityName = entityName,
+            filters = searchRequest.filters,
+            pageNo = searchRequest.pageNo,
+            pageSize = searchRequest.pageSize
+        )
+        
+        ctx.json(results)
+    }
 
 }

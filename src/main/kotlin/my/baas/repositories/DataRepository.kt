@@ -6,8 +6,11 @@ import io.ebean.RawSql
 import io.ebean.RawSqlBuilder
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
+import my.baas.dto.FilterDto
+import my.baas.dto.FilterOperator
 import my.baas.models.DataModel
 import my.baas.models.SchemaModel
+import my.baas.services.TableManagementService.parseJsonPathToChain
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -21,6 +24,7 @@ interface DataRepository {
     fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel?
     fun findByUniqueIdentifiers(entityName: String, uniqueIdentifiers: List<String>): List<DataModel>
     fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean
+    fun search(entityName: String, filters: List<FilterDto>, pageNo: Int, pageSize: Int): PagedList<DataModel>
 }
 
 class DataRepositoryImpl : DataRepository {
@@ -250,5 +254,117 @@ class DataRepositoryImpl : DataRepository {
             .setParameter("tenantId", tenantId)
             .execute() > 0
 
+    }
+
+    override fun search(
+        entityName: String,
+        filters: List<FilterDto>,
+        pageNo: Int,
+        pageSize: Int
+    ): PagedList<DataModel> {
+        val tenantId = CurrentUser.getTenant()?.id
+            ?: throw IllegalStateException("No tenant in context")
+        val tableName = SchemaModel.generateTableName(tenantId, entityName)
+
+        if (filters.isEmpty()) {
+            return findAllByEntityName(entityName, null, pageNo, pageSize)
+        }
+
+        // Build filter conditions functionally
+        val filterConditions = filters.mapIndexed { index, filter ->
+            buildFilterCondition(filter, index)
+        }
+
+        // Base conditions
+        val baseConditions = listOf(
+            "entity_name = :entityName" to mapOf("entityName" to entityName),
+            "tenant_id = :tenantId" to mapOf("tenantId" to tenantId)
+        )
+
+        // Combine all conditions
+        val allConditions = baseConditions + filterConditions
+        val whereConditions = allConditions.map { it.first }
+        val allParameters = allConditions.map { it.second }.fold(emptyMap<String, Any>()) { acc, map ->
+            acc + map
+        }
+
+        val sql = """
+            SELECT * FROM $tableName 
+            WHERE ${whereConditions.joinToString(" AND ")}
+            ORDER BY when_created DESC
+        """.trimIndent()
+
+        val rawSql = createDataModelRawSql(sql)
+
+        val query = AppContext.db.find(DataModel::class.java)
+            .setRawSql(rawSql)
+
+        // Set all parameters functionally
+        allParameters.forEach { (key, value) ->
+            query.setParameter(key, value)
+        }
+
+        return query
+            .setFirstRow((pageNo - 1) * pageSize)
+            .setMaxRows(pageSize)
+            .findPagedList()
+    }
+
+    private fun buildFilterCondition(filter: FilterDto, index: Int): Pair<String, Map<String, Any>> {
+        val paramKey = "filter$index"
+        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
+
+        return when (filter.operator) {
+            FilterOperator.EQ -> {
+                "($jsonPathChain)::text = :$paramKey" to mapOf(paramKey to filter.value)
+            }
+
+            FilterOperator.NE -> {
+                "($jsonPathChain)::text != :$paramKey" to mapOf(paramKey to filter.value)
+            }
+
+            FilterOperator.LT, FilterOperator.LE, FilterOperator.GT, FilterOperator.GE -> {
+                val operator = when (filter.operator) {
+                    FilterOperator.LT -> "<"
+                    FilterOperator.LE -> "<="
+                    FilterOperator.GT -> ">"
+                    FilterOperator.GE -> ">="
+                    else -> throw IllegalArgumentException("Unexpected operator")
+                }
+                "($jsonPathChain)::numeric $operator :$paramKey" to mapOf(paramKey to filter.value)
+            }
+
+            FilterOperator.IN, FilterOperator.NOT_IN -> {
+                val values = filter.getListValue()
+                val placeholders = values.mapIndexed { i, _ -> ":${paramKey}_$i" }.joinToString(",")
+                val parameters = values.mapIndexed { i, value -> "${paramKey}_$i" to (value ?: "") }.toMap()
+                val operator = if (filter.operator == FilterOperator.IN) "IN" else "NOT IN"
+                "($jsonPathChain)::text $operator ($placeholders)" to parameters
+            }
+
+            FilterOperator.CONTAINS, FilterOperator.CONTAINED_BY -> {
+                val operator = if (filter.operator == FilterOperator.CONTAINS) "@>" else "<@"
+                "$jsonPathChain $operator cast(:$paramKey as jsonb)" to mapOf(
+                    paramKey to objectMapper.writeValueAsString(
+                        filter.value
+                    )
+                )
+            }
+
+            FilterOperator.HAS_KEY -> {
+                "$jsonPathChain ? :$paramKey" to mapOf(paramKey to filter.value.toString())
+            }
+
+            FilterOperator.HAS_ANY_KEYS, FilterOperator.HAS_ALL_KEYS -> {
+                val keys = filter.getListValue().map { it.toString() }.toTypedArray()
+                val operator = if (filter.operator == FilterOperator.HAS_ANY_KEYS) "?|" else "?&"
+                "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to keys)
+            }
+
+            FilterOperator.PATH_EXISTS, FilterOperator.PATH_MATCH -> {
+                val operator = if (filter.operator == FilterOperator.PATH_EXISTS) "@?" else "@@"
+                "data $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
+            }
+        }
     }
 }
