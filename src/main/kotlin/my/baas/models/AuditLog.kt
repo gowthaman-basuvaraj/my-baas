@@ -4,8 +4,8 @@ import io.ebean.annotation.DbJsonB
 import io.ebean.annotation.Index
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.Enumerated
 import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import java.time.Instant
 
 enum class AuditAction {

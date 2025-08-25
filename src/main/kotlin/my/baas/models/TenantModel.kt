@@ -2,9 +2,7 @@ package my.baas.models
 
 import io.ebean.annotation.DbJsonB
 import io.ebean.annotation.Index
-import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.Table
 
 @Entity
 @Index(columnNames = ["domain"], unique = true)

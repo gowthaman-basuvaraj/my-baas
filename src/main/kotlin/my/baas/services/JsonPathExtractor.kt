@@ -1,7 +1,6 @@
 package my.baas.services
 
 import com.jayway.jsonpath.JsonPath
-import com.fasterxml.jackson.databind.ObjectMapper
 import my.baas.config.AppContext.objectMapper
 
 data class ExtractedValue(

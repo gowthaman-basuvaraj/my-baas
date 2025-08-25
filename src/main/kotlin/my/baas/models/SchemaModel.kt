@@ -1,10 +1,10 @@
 package my.baas.models
 
-import my.baas.annotations.GenerateDto
-import my.baas.services.LifecycleEvent
 import io.ebean.annotation.DbJsonB
 import io.ebean.annotation.Index
 import jakarta.persistence.Entity
+import my.baas.annotations.GenerateDto
+import my.baas.services.LifecycleEvent
 
 
 @Entity

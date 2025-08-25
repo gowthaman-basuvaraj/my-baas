@@ -7,7 +7,7 @@ import my.baas.models.ReportExecutionLog
 import my.baas.models.ReportModel
 import org.slf4j.LoggerFactory
 import java.io.File
-import java.util.Properties
+import java.util.*
 
 class SftpUploadProcessor : CompletionActionProcessor<ReportModel.CompletionAction.SftpUpload> {
     private val logger = LoggerFactory.getLogger(javaClass)
