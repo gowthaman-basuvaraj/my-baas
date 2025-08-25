@@ -87,6 +87,7 @@ fun main() {
                                 get(DataModelController::getAll)
                                 get("schema", DataModelController::getSchema)
                                 post("validate", DataModelController::validatePayload)
+                                post("search", DataModelController::search)
                                 post(DataModelController::create)
                                 path("{uniqueIdentifier}") {
                                     get(DataModelController::getOne)
