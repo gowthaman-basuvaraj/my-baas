@@ -1,11 +1,9 @@
 package my.baas.services
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.ebean.PagedList
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
-import my.baas.config.AppContext
 import my.baas.models.*
 import my.baas.repositories.ReportExecutionRepository
 import my.baas.repositories.ReportExecutionRepositoryImpl
@@ -27,8 +25,7 @@ data class ReportExecutionResult(
 
 class ReportService(
     private val repository: ReportRepository = ReportRepositoryImpl(),
-    private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl(),
-    private val objectMapper: ObjectMapper = AppContext.objectMapper
+    private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl()
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
