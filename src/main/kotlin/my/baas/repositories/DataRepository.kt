@@ -286,9 +286,7 @@ class DataRepositoryImpl : DataRepository {
         // Combine all conditions
         val allConditions = baseConditions + filterConditions
         val whereConditions = allConditions.map { it.first }
-        val allParameters = allConditions.map { it.second }.fold(emptyMap<String, Any>()) { acc, map ->
-            acc + map
-        }
+        val allParameters = allConditions.flatMap { it.second.toList() }.toMap()
 
         val sql = """
             SELECT * FROM $tableName 
