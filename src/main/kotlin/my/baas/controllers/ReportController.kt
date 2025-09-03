@@ -253,14 +253,14 @@ object ReportController {
         methods = [HttpMethod.POST],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = ReportExecutionRequest::class)]),
         responses = [
-            OpenApiResponse("202", description = "Job submitted successfully")
+            OpenApiResponse("201", description = "Job submitted successfully")
         ],
         tags = ["Report Jobs"]
     )
     fun submitJob(ctx: Context) {
         val request = ctx.bodyAsClass(ReportExecutionRequest::class.java)
         val response = reportService.submitReportJob(request)
-        ctx.status(202).json(response)
+        ctx.status(201).json(response)
     }
 
     @OpenApi(
