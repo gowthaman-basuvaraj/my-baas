@@ -238,9 +238,9 @@ class DataModelService(
                 valid = false,
                 errors = validationResult.map { error ->
                     ValidationError(
-                        path = error.property,
-                        message = error.message,
-                        type = error.type
+                        path = error.property ?: "",
+                        message = error.message ?: "",
+                        type = error.type ?: ""
                     )
                 }
             )

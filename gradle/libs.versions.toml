@@ -94,6 +94,8 @@ kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref =
 # HTTP Client
 apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version.ref = "apache-httpclient" }
 
+#IP address validation
+ipaddress = "com.github.seancfoley:ipaddress:5.5.1"
 
 
 [plugins]

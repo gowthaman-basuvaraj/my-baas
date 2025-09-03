@@ -1,5 +1,6 @@
 package my.baas.auth
 
+import inet.ipaddr.IPAddressString
 import io.javalin.http.Handler
 import io.javalin.http.UnauthorizedResponse
 import my.baas.config.AppContext
@@ -46,9 +47,16 @@ object AuthHandler {
 
             // Check if client IP is in allowed IPs list (if configured)
             tenant.allowedIps?.let { allowedIps ->
-                if (allowedIps.isNotEmpty() && !allowedIps.contains(clientIp)) {
-                    logger.warn("Client IP $clientIp not in allowed IPs for tenant: ${tenant.name}")
-                    throw UnauthorizedResponse("Client IP not authorized")
+
+                if (allowedIps.isNotEmpty() && !allowedIps.any { ip ->
+                        IPAddressString(ip).contains(
+                            IPAddressString(
+                                clientIp
+                            )
+                        )
+                    }) {
+                    logger.warn("Client IP $clientIp not in allowed IPs for tenant: ${tenant.name}, Allowed [$allowedIps]")
+                    throw UnauthorizedResponse("Client IP [$clientIp] not authorized")
                 }
             }
 

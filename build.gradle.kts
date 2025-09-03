@@ -56,6 +56,9 @@ dependencies {
     
     // HTTP Client
     implementation(libs.apache.httpclient)
+
+    // IP address
+    implementation(libs.ipaddress)
     
     // Annotation processing for DTO generation
     implementation(libs.kotlinpoet)

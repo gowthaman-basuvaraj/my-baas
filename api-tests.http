@@ -28,6 +28,22 @@ Authorization: {{authToken}}
   "isActive": true
 }
 
+
+### Create another tenant
+POST {{baseUrl}}/admin/tenants
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "name": "Theta Company",
+  "domain": "theta.example.com",
+  "isActive": true,
+  "allowedIps": ["127.0.0.1/32", "10.0.0.0/8"],
+  "config": {
+    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
+  }
+}
+
 ###
 
 ### Get all tenants with pagination
