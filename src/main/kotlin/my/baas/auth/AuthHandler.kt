@@ -1,6 +1,5 @@
 package my.baas.auth
 
-import io.javalin.http.BadRequestResponse
 import io.javalin.http.Handler
 import io.javalin.http.UnauthorizedResponse
 import my.baas.config.AppContext
@@ -26,14 +25,12 @@ object AuthHandler {
         val token = ctx.header("Authorization")?.removePrefix("Bearer ")
             ?: throw UnauthorizedResponse("Authorization header is missing")
         try {
-            val jwtClaims = JwtProvider.verify(token)
-            val userId = jwtClaims.claimsMap["preferred_username"] as String
 
             // Extract client IP
             val clientIp = ClientIpExtractor.extractClientIp(ctx)
-            
+
             // Extract tenant from the host header or domain
-            val domain = ctx.header("Host") ?: ctx.host() ?: throw BadRequestResponse("unable to find Host")
+            val domain = ctx.header("Host") ?: ctx.host() ?: throw UnauthorizedResponse("unable to find Host")
 
             // Find a tenant by domain
             val tenant = AppContext.db.find(TenantModel::class.java)
@@ -46,7 +43,7 @@ object AuthHandler {
                 logger.warn("No active tenant found for domain: $domain")
                 throw UnauthorizedResponse("Invalid tenant domain")
             }
-            
+
             // Check if client IP is in allowed IPs list (if configured)
             tenant.allowedIps?.let { allowedIps ->
                 if (allowedIps.isNotEmpty() && !allowedIps.contains(clientIp)) {
@@ -55,9 +52,35 @@ object AuthHandler {
                 }
             }
 
+            val jwtClaims =
+                JwtProvider.verify(token, tenant.config.jwksUri ?: throw UnauthorizedResponse("No JWKS URI found"))
+            val userId = jwtClaims.claimsMap["preferred_username"] as String
+
             // Set user with tenant and client IP
             CurrentUser.set(UserContext(userId, tenant, clientIp))
             logger.debug("Set tenant: ${tenant.name} for user: $userId from IP: $clientIp")
+
+        } catch (e: UnauthorizedResponse) {
+            logger.error("exception in parsing JWT or setting tenant", e)
+            throw e
+        } catch (e: Exception) {
+            logger.error("exception in parsing JWT or setting tenant", e)
+            throw UnauthorizedResponse("Invalid JWT or tenant")
+        }
+    }
+    val handleAdmin: Handler = Handler { ctx ->
+        val token = ctx.header("Authorization")?.removePrefix("Bearer ")
+            ?: throw UnauthorizedResponse("Authorization header is missing")
+        try {
+            val jwtClaims =
+                JwtProvider.verify(token, AppContext.appConfig.wellKnownUrl())
+            val userId = jwtClaims.claimsMap["preferred_username"] as String
+
+            val clientIp = ClientIpExtractor.extractClientIp(ctx)
+
+            // Set user with tenant and client IP
+            CurrentUser.set(UserContext(userId, null, clientIp, UserType.ADMIN))
+            logger.debug("Set Admin for user: $userId from IP: $clientIp")
 
         } catch (e: Exception) {
             logger.error("exception in parsing JWT or setting tenant", e)

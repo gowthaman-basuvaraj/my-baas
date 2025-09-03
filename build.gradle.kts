@@ -59,6 +59,16 @@ dependencies {
     implementation(libs.log4j.core)
     implementation(libs.jakarta.persistence.api)
     kapt(libs.cactusthorn.config.compiler)
+    
+    // Test dependencies
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testImplementation(libs.mockk)
+    testImplementation(libs.testcontainers.core)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit)
+    testImplementation(libs.kotest.runner)
+    testImplementation(libs.kotest.assertions)
 }
 
 tasks.test {

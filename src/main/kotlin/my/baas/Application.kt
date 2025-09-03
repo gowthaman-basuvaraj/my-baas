@@ -30,6 +30,7 @@ fun main() {
             config.router.apiBuilder {
                 // Admin APIs - for managing tenants
                 path("admin") {
+                    before(AuthHandler.handleAdmin)
                     after { CurrentUser.clear() }
                     path("tenants") {
                         get(TenantController::getAll)

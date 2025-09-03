@@ -26,9 +26,13 @@ jakarta-mail = "2.0.3"
 jakarta-mail-api = "2.1.3"
 kotlinpoet = "2.0.0"
 kotlin-compile-testing = "1.6.0"
+junit = "5.10.1"
+mockk = "1.13.8"
+testcontainers = "1.19.3"
+kotest = "5.8.0"
 
 [libraries]
-javalin = { module = "io.javalin:javalin", version.ref = "javalin" }
+javalin = { module = "io.javalin:javalin-bundle", version.ref = "javalin" }
 ebean = { module = "io.ebean:ebean", version.ref = "ebean" }
 cactusthorn-config = { module = "net.cactusthorn.config:config-core", version.ref = "cactusthorn-config" }
 cactusthorn-config-compiler = { module = "net.cactusthorn.config:config-compiler", version.ref = "cactusthorn-config" }
@@ -73,6 +77,16 @@ jakarta-mail-impl = { module = "org.eclipse.angus:jakarta.mail", version.ref = "
 # Annotation processing for DTO generation
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlin-compile-testing = { module = "com.github.tschuchortdev:kotlin-compile-testing", version.ref = "kotlin-compile-testing" }
+
+# Test dependencies
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 
 
 

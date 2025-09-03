@@ -26,6 +26,8 @@ interface DataRepository {
     fun findByUniqueIdentifiers(entityName: String, uniqueIdentifiers: List<String>): List<DataModel>
     fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean
     fun search(entityName: String, filters: List<FilterDto>, pageNo: Int, pageSize: Int): PagedList<DataModel>
+    fun findSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel?
+    fun validateSchemaExistsForEntityAndVersion(entityName: String, versionName: String? = null)
 }
 
 class DataRepositoryImpl : DataRepository {
@@ -368,5 +370,38 @@ class DataRepositoryImpl : DataRepository {
     
     private fun buildDataRootOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
         return "data $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
+    }
+
+    override fun findSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel? {
+        val tenantId = CurrentUser.getTenant()?.id
+            ?: throw IllegalStateException("No tenant in context")
+        
+        return AppContext.db.find(SchemaModel::class.java)
+            .where()
+            .eq("entityName", entityName)
+            .eq("versionName", versionName)
+            .eq("tenantId", tenantId)
+            .findOne()
+    }
+
+    override fun validateSchemaExistsForEntityAndVersion(entityName: String, versionName: String?) {
+        val tenantId = CurrentUser.getTenant()?.id
+            ?: throw IllegalStateException("No tenant in context")
+        
+        val query = AppContext.db.find(SchemaModel::class.java)
+            .where()
+            .eq("entityName", entityName)
+            .eq("tenantId", tenantId)
+
+        if (versionName != null) {
+            query.eq("versionName", versionName)
+        }
+
+        val schemaExists = query.exists()
+
+        if (!schemaExists) {
+            val versionInfo = if (versionName != null) ", version: '$versionName'" else ""
+            throw io.javalin.http.NotFoundResponse("Schema not found for entity: '$entityName'$versionInfo")
+        }
     }
 }

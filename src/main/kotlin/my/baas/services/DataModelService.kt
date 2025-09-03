@@ -249,7 +249,7 @@ class DataModelService(
 
     fun migrateVersion(entityName: String, uniqueIdentifier: String, destinationVersion: String): DataModel {
         // Check if destination version exists
-        validateSchemaExistsForEntityAndVersion(entityName, destinationVersion)
+        repository.validateSchemaExistsForEntityAndVersion(entityName, destinationVersion)
 
         // Load the existing data model
         val existingDataModel = repository.findByUniqueIdentifier(entityName, uniqueIdentifier)
@@ -336,31 +336,15 @@ class DataModelService(
     }
 
     fun validateSchemaExistsForEntity(entityName: String) {
-        return validateSchemaExistsForEntityAndVersion(entityName)
+        return repository.validateSchemaExistsForEntityAndVersion(entityName)
     }
 
     fun validateSchemaExistsForEntityAndVersion(entityName: String, versionName: String? = null) {
-        val schemaExists = AppContext.db.find(SchemaModel::class.java)
-            .where()
-            .eq("entityName", entityName)
-            .apply {
-                if (versionName != null) {
-                    eq("versionName", versionName)
-                }
-            }
-            .exists()
-
-        if (!schemaExists) {
-            throw NotFoundResponse("Schema not found for entity: '$entityName', version: '$versionName'")
-        }
+        return repository.validateSchemaExistsForEntityAndVersion(entityName, versionName)
     }
 
     private fun loadSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel {
-        return AppContext.db.find(SchemaModel::class.java)
-            .where()
-            .eq("entityName", entityName)
-            .eq("versionName", versionName)
-            .findOne()
+        return repository.findSchemaByEntityAndVersion(entityName, versionName)
             ?: throw NotFoundResponse("Schema not found for entity: '$entityName', version: '$versionName'")
     }
 

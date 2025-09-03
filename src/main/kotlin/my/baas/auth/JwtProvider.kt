@@ -15,10 +15,7 @@ object JwtProvider {
 
     private val httpClient = HttpClient.newHttpClient()
 
-    fun verify(token: String): JwtClaims {
-        val wellKnownUrl = AppContext.appConfig.wellKnownUrl()
-
-        // Fetch JWKS URI from well-known configuration
+    fun verify(token: String, wellKnownUrl: String): JwtClaims {
         val jwksUri = fetchAuthEndpointWellKnown(wellKnownUrl)
 
         // Create JWKS resolver

@@ -1,11 +1,14 @@
 package my.baas.auth
 
 import my.baas.models.TenantModel
-
+enum class UserType {
+    ADMIN, TENANT, ANONYMOUS;
+}
 data class UserContext(
     val userId: String,
     val tenant: TenantModel? = null,
-    val clientIp: String? = null
+    val clientIp: String? = null,
+    val userType: UserType = UserType.ANONYMOUS
 )
 
 object CurrentUser {

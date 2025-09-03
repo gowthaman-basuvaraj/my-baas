@@ -130,3 +130,4 @@ gradle-app.setting
 .claude
 .gemini
 app*.log*
+app.properties
