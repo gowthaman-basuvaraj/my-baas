@@ -30,6 +30,7 @@ junit = "5.10.1"
 mockk = "1.13.8"
 testcontainers = "1.19.3"
 kotest = "5.8.0"
+apache-httpclient = "5.4.1"
 
 [libraries]
 javalin = { module = "io.javalin:javalin-bundle", version.ref = "javalin" }
@@ -43,6 +44,8 @@ openapi-annotation-processor = { module = "io.javalin.community.openapi:openapi-
 
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version.ref = "jackson" }
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
 
 jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
@@ -87,6 +90,9 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+
+# HTTP Client
+apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version.ref = "apache-httpclient" }
 
 
 

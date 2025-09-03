@@ -1,8 +1,11 @@
 package my.baas.config
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.MappingJsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ebean.Database
 import io.ebean.DatabaseBuilder
 import io.ebean.DatabaseFactory
@@ -52,8 +55,10 @@ object AppContext {
         DatabaseFactory.create(dataSourceConfig())
     }
 
-    val objectMapper: ObjectMapper by lazy {
-        ObjectMapper().registerModule(KotlinModule.Builder().build())
+    val objectMapper = jacksonObjectMapper().apply {
+        configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+        findAndRegisterModules()
     }
     val reportConfig: ReportConfig by lazy {
         ReportConfig.fromAppConfig(appConfig)

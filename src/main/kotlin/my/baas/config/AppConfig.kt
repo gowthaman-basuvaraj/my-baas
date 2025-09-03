@@ -3,9 +3,18 @@ package my.baas.config
 import net.cactusthorn.config.core.Config
 import net.cactusthorn.config.core.Default
 import net.cactusthorn.config.core.Key
+import net.cactusthorn.config.core.loader.LoadStrategy
 import java.util.*
 
-@Config
+
+@Config(
+    sources = [
+        "file:./app.properties",
+        "file:~/app.properties",
+        "system:env",
+    ],
+    loadStrategy = LoadStrategy.FIRST_KEYCASEINSENSITIVE
+)
 interface AppConfig {
 
     @Key("database.url")

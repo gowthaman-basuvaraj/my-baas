@@ -48,9 +48,7 @@ fun main() {
                 // Regular APIs - tenant-scoped
                 path("api") {
                     before(AuthHandler.handle)
-                    path("schema") {
-                        crud(SchemaController)
-                    }
+                    crud("schemas/{id}", SchemaController)
                     path("reports") {
                         get(ReportController::getAll)
                         post(ReportController::create)

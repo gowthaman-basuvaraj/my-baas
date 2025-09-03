@@ -40,7 +40,7 @@ object ReportController {
         path = "/api/reports/{id}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("id", Long::class, "The report ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The report ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Report retrieved successfully"),
@@ -63,8 +63,8 @@ object ReportController {
         path = "/api/reports",
         methods = [HttpMethod.GET],
         queryParams = [
-            OpenApiParam("page", Int::class, "Page number (default: 1)", required = false),
-            OpenApiParam("pageSize", Int::class, "Page size (default: 20)", required = false)
+            OpenApiParam(name = "page", type = Int::class, description = "Page number (default: 1)", required = false),
+            OpenApiParam(name = "pageSize", type = Int::class, description = "Page size (default: 20)", required = false)
         ],
         responses = [
             OpenApiResponse("200", description = "Reports retrieved successfully")
@@ -95,7 +95,7 @@ object ReportController {
         path = "/api/reports/{id}",
         methods = [HttpMethod.PUT],
         pathParams = [
-            OpenApiParam("id", Long::class, "The report ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The report ID", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = ReportModelCreateDto::class)]),
         responses = [
@@ -121,7 +121,7 @@ object ReportController {
         path = "/api/reports/{id}",
         methods = [HttpMethod.DELETE],
         pathParams = [
-            OpenApiParam("id", Long::class, "The report ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The report ID", required = true)
         ],
         responses = [
             OpenApiResponse("204", description = "Report deleted successfully"),
@@ -164,7 +164,7 @@ object ReportController {
         path = "/api/reports/{id}/activate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("id", Long::class, "The report ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The report ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Report activated successfully"),
@@ -190,7 +190,7 @@ object ReportController {
         path = "/api/reports/{id}/deactivate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("id", Long::class, "The report ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The report ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Report deactivated successfully"),
@@ -269,7 +269,7 @@ object ReportController {
         path = "/api/reports/jobs/{jobId}/status",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("jobId", String::class, "The job ID")
+            OpenApiParam(name = "jobId", type = String::class, description = "The job ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Job status retrieved successfully")
@@ -288,7 +288,7 @@ object ReportController {
         path = "/api/reports/jobs/{jobId}/cancel",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("jobId", String::class, "The job ID")
+            OpenApiParam(name = "jobId", type = String::class, description = "The job ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Job cancelled successfully"),
@@ -314,11 +314,11 @@ object ReportController {
         path = "/api/reports/{id}/history",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("id", Long::class, "The report ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The report ID", required = true)
         ],
         queryParams = [
-            OpenApiParam("page", Int::class, "Page number (default: 1)", required = false),
-            OpenApiParam("pageSize", Int::class, "Page size (default: 20)", required = false)
+            OpenApiParam(name = "page", type = Int::class, description = "Page number (default: 1)", required = false),
+            OpenApiParam(name = "pageSize", type = Int::class, description = "Page size (default: 20)", required = false)
         ],
         responses = [
             OpenApiResponse("200", description = "Execution history retrieved successfully"),
@@ -343,7 +343,7 @@ object ReportController {
         path = "/api/reports/jobs/{jobId}/download",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("jobId", String::class, "The job ID")
+            OpenApiParam(name = "jobId", type = String::class, description = "The job ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "File download"),

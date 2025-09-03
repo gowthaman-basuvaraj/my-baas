@@ -131,3 +131,5 @@ gradle-app.setting
 .gemini
 app*.log*
 app.properties
+oauth2-mock-server/node_modules
+http-client.private.env.json

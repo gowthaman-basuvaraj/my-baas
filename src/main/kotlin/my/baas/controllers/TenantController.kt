@@ -48,7 +48,7 @@ object TenantController {
         path = "/api/tenants/{id}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("id", Long::class, "The tenant ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Tenant retrieved successfully"),
@@ -73,8 +73,8 @@ object TenantController {
         path = "/api/tenants",
         methods = [HttpMethod.GET],
         queryParams = [
-            OpenApiParam("page", Int::class, "Page number (default: 1)", required = false),
-            OpenApiParam("pageSize", Int::class, "Page size (default: 20)", required = false)
+            OpenApiParam(name = "page", type = Int::class, description = "Page number (default: 1)", required = false),
+            OpenApiParam(name = "pageSize", type = Int::class, description = "Page size (default: 20)", required = false)
         ],
         responses = [
             OpenApiResponse("200", description = "Tenants retrieved successfully")
@@ -99,7 +99,7 @@ object TenantController {
         path = "/api/tenants/{id}",
         methods = [HttpMethod.PUT],
         pathParams = [
-            OpenApiParam("id", Long::class, "The tenant ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = TenantModel::class)]),
         responses = [
@@ -151,7 +151,7 @@ object TenantController {
         path = "/api/tenants/{id}",
         methods = [HttpMethod.DELETE],
         pathParams = [
-            OpenApiParam("id", Long::class, "The tenant ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("204", description = "Tenant deleted successfully"),
@@ -177,7 +177,7 @@ object TenantController {
         path = "/api/tenants/{id}/activate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("id", Long::class, "The tenant ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Tenant activated successfully"),
@@ -205,7 +205,7 @@ object TenantController {
         path = "/api/tenants/{id}/deactivate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("id", Long::class, "The tenant ID")
+            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Tenant deactivated successfully"),

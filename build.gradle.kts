@@ -14,7 +14,9 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.javalin)
+    implementation(libs.javalin) {
+        exclude("ch.qos.logback", "logback-classic")
+    }
     implementation(libs.javalin.openapi.plugin)
     implementation(libs.javalin.swagger.plugin)
 
@@ -25,6 +27,8 @@ dependencies {
     implementation(libs.cactusthorn.config)
     implementation(libs.jackson.databind)
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.datatype.jdk8)
+    implementation(libs.jackson.datatype.jsr310)
     implementation(libs.jose4j)
     implementation(libs.json.schema.validator)
     implementation(libs.json.path)
@@ -50,13 +54,15 @@ dependencies {
     implementation(libs.jakarta.mail)
     implementation(libs.jakarta.mail.impl)
     
+    // HTTP Client
+    implementation(libs.apache.httpclient)
+    
     // Annotation processing for DTO generation
     implementation(libs.kotlinpoet)
     testImplementation(libs.kotlin.compile.testing)
     
     implementation(libs.postgresql)
     implementation(libs.log4j.slf4j.impl)
-    implementation(libs.log4j.core)
     implementation(libs.jakarta.persistence.api)
     kapt(libs.cactusthorn.config.compiler)
     

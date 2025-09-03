@@ -1,10 +1,4 @@
 ### API Testing File for MyBaaS
-### Set base URL, auth token and tenant host as variables
-@baseUrl = http://localhost:7070
-@authToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJpYXQiOjE2MTYyMzkwMjJ9.test-token
-@tenantHost = localhost:7070
-@adminToken = admin-secret-token
-
 ### ============================================
 ### ADMIN TENANT MANAGEMENT APIS
 ### ============================================
@@ -12,7 +6,7 @@
 ### Create a new tenant
 POST {{baseUrl}}/admin/tenants
 Content-Type: application/json
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 {
   "name": "Acme Corporation",
@@ -26,7 +20,7 @@ X-Admin-Token: {{adminToken}}
 ### Create another tenant
 POST {{baseUrl}}/admin/tenants
 Content-Type: application/json
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 {
   "name": "Beta Company",
@@ -38,14 +32,14 @@ X-Admin-Token: {{adminToken}}
 
 ### Get all tenants with pagination
 GET {{baseUrl}}/admin/tenants?page=1&pageSize=10
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 ###
 
 ### Get tenant by ID
 # Replace {id} with actual tenant ID from create response
 GET {{baseUrl}}/admin/tenants/1
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 ###
 
@@ -53,7 +47,7 @@ X-Admin-Token: {{adminToken}}
 # Replace {id} with actual tenant ID
 PUT {{baseUrl}}/admin/tenants/1
 Content-Type: application/json
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 {
   "name": "Acme Corporation Updated",
@@ -67,14 +61,14 @@ X-Admin-Token: {{adminToken}}
 ### Activate tenant
 # Replace {id} with actual tenant ID
 POST {{baseUrl}}/admin/tenants/1/activate
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 ###
 
 ### Deactivate tenant
 # Replace {id} with actual tenant ID
 POST {{baseUrl}}/admin/tenants/1/deactivate
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 ###
 
@@ -82,7 +76,7 @@ X-Admin-Token: {{adminToken}}
 # Replace {id} with actual tenant ID
 PUT {{baseUrl}}/admin/tenants/1/allowed-ips
 Content-Type: application/json
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 {
   "allowedIps": ["192.168.0.0/16", "10.0.0.0/8"]
@@ -93,14 +87,14 @@ X-Admin-Token: {{adminToken}}
 ### Get tenant statistics
 # Replace {id} with actual tenant ID
 GET {{baseUrl}}/admin/tenants/1/stats
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 ###
 
 ### Delete tenant (will fail if tenant has data)
 # Replace {id} with actual tenant ID
 DELETE {{baseUrl}}/admin/tenants/999
-X-Admin-Token: {{adminToken}}
+Authorization: {{authToken}}
 
 ###
 
@@ -126,7 +120,7 @@ X-Admin-Token: wrong-token
 ### ============================================
 
 ### Create a new schema
-POST {{baseUrl}}/api/schema
+POST {{baseUrl}}/api/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -186,7 +180,7 @@ Host: {{tenantHost}}
 ###
 
 ### Create schema v2 for migration testing
-POST {{baseUrl}}/api/schema
+POST {{baseUrl}}/api/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -251,7 +245,7 @@ Host: {{tenantHost}}
 ###
 
 ### Get all schemas
-GET {{baseUrl}}/api/schema
+GET {{baseUrl}}/api/schemas
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -259,7 +253,7 @@ Host: {{tenantHost}}
 
 ### Get schema by ID
 # Replace {id} with actual schema ID from create response
-GET {{baseUrl}}/api/schema/1
+GET {{baseUrl}}/api/schemas/1
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -267,7 +261,7 @@ Host: {{tenantHost}}
 
 ### Update schema
 # Replace {id} with actual schema ID
-PUT {{baseUrl}}/api/schema/1
+PUT {{baseUrl}}/api/schemas/1
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -303,7 +297,7 @@ Host: {{tenantHost}}
 
 ### Delete schema
 # Replace {id} with actual schema ID
-DELETE {{baseUrl}}/api/schema/1
+DELETE {{baseUrl}}/api/schemas/1
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -932,7 +926,7 @@ Host: {{tenantHost}}
 ### ============================================
 
 ### Create a schema with validation disabled
-POST {{baseUrl}}/api/schema
+POST {{baseUrl}}/api/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}

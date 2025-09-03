@@ -1,25 +1,29 @@
 package my.baas.auth
 
 import my.baas.config.AppContext
-import org.jose4j.jwk.HttpsJwks
+import org.apache.hc.client5.http.classic.methods.HttpGet
+import org.apache.hc.client5.http.impl.classic.BasicHttpClientResponseHandler
+import org.apache.hc.client5.http.impl.classic.HttpClients
+import org.jose4j.jwk.JsonWebKey
+import org.jose4j.jwk.JsonWebKeySet
 import org.jose4j.jwt.JwtClaims
 import org.jose4j.jwt.consumer.JwtConsumer
 import org.jose4j.jwt.consumer.JwtConsumerBuilder
-import org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
+import org.jose4j.keys.resolvers.JwksVerificationKeyResolver
+import org.slf4j.LoggerFactory
 
 object JwtProvider {
 
-    private val httpClient = HttpClient.newHttpClient()
+    private val logger = LoggerFactory.getLogger(JwtProvider::class.java)
 
     fun verify(token: String, wellKnownUrl: String): JwtClaims {
+        logger.info("Verifying JWT token: $token, with wellKnownUrl: $wellKnownUrl")
         val jwksUri = fetchAuthEndpointWellKnown(wellKnownUrl)
 
-        // Create JWKS resolver
-        val jwksResolver = HttpsJwksVerificationKeyResolver(HttpsJwks(jwksUri.jwksUri))
+        // Create a JWKS resolver
+        val jwksResolver = JwksVerificationKeyResolver(
+            fetchJwksKeys(jwksUri.jwksUri)
+        )
 
         // Build JWT consumer
         val jwtConsumer: JwtConsumer = JwtConsumerBuilder()
@@ -34,18 +38,25 @@ object JwtProvider {
         return jwtConsumer.processToClaims(token)
     }
 
-    private fun fetchAuthEndpointWellKnown(wellKnownUrl: String): OAuthWellKnown {
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(wellKnownUrl))
-            .GET()
-            .build()
-
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-
-        if (response.statusCode() != 200) {
-            throw RuntimeException("Failed to fetch well-known configuration: ${response.statusCode()}")
-        }
-
-        return AppContext.objectMapper.readValue(response.body(), OAuthWellKnown::class.java)
+    private fun fetchJwksKeys(jwksUri: String): MutableList<JsonWebKey> {
+        return JsonWebKeySet(
+            HttpClients.createDefault().execute(
+                HttpGet(jwksUri),
+                BasicHttpClientResponseHandler()
+            )
+        ).jsonWebKeys
     }
+
+    private fun fetchAuthEndpointWellKnown(wellKnownUrl: String): OAuthWellKnown {
+
+        return AppContext.objectMapper.readValue(
+            HttpClients.createDefault().execute(
+                HttpGet(wellKnownUrl),
+                BasicHttpClientResponseHandler()
+            ),
+            OAuthWellKnown::class.java
+        )
+
+    }
+
 }

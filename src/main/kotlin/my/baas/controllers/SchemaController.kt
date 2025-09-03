@@ -45,7 +45,7 @@ object SchemaController : CrudHandler {
         path = "/api/schemas/{id}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("id", String::class, "The schema ID")
+            OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Schema retrieved successfully"),
@@ -82,7 +82,7 @@ object SchemaController : CrudHandler {
         path = "/api/schemas/{id}",
         methods = [HttpMethod.PUT],
         pathParams = [
-            OpenApiParam("id", String::class, "The schema ID")
+            OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = SchemaModelCreateDto::class)]),
         responses = [
@@ -124,10 +124,10 @@ object SchemaController : CrudHandler {
         path = "/api/schemas/{id}",
         methods = [HttpMethod.DELETE],
         pathParams = [
-            OpenApiParam("id", String::class, "The schema ID")
+            OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
         queryParams = [
-            OpenApiParam("dropTable", Boolean::class, "Whether to drop the corresponding table (default: false)", required = false)
+            OpenApiParam(name = "dropTable", type = Boolean::class, description = "Whether to drop the corresponding table (default: false)", required = false)
         ],
         responses = [
             OpenApiResponse("204", description = "Schema deleted successfully"),

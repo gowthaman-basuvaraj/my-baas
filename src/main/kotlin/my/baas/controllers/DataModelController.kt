@@ -19,8 +19,8 @@ object DataModelController {
         path = "/api/data/{entityName}/{versionName}",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("versionName", String::class, "The version name")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "versionName", type = String::class, description = "The version name", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = Map::class)]),
         responses = [
@@ -45,8 +45,8 @@ object DataModelController {
         path = "/api/data/{entityName}/{uniqueIdentifier}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("uniqueIdentifier", String::class, "The unique identifier")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Data model retrieved successfully"),
@@ -69,7 +69,7 @@ object DataModelController {
         path = "/api/data/{entityName}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true)
         ],
         queryParams = [
             OpenApiParam("versionName", String::class, "Filter by version name", required = false),
@@ -98,9 +98,9 @@ object DataModelController {
         path = "/api/data/{entityName}/{versionName}/{uniqueIdentifier}",
         methods = [HttpMethod.PUT],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("versionName", String::class, "The version name"),
-            OpenApiParam("uniqueIdentifier", String::class, "The unique identifier")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "versionName", type = String::class, description = "The version name", required = true),
+            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = Map::class)]),
         responses = [
@@ -128,9 +128,9 @@ object DataModelController {
         path = "/api/data/{entityName}/{versionName}/{uniqueIdentifier}",
         methods = [HttpMethod.PATCH],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("versionName", String::class, "The version name"),
-            OpenApiParam("uniqueIdentifier", String::class, "The unique identifier")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "versionName", type = String::class, description = "The version name", required = true),
+            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = Map::class)]),
         responses = [
@@ -157,8 +157,8 @@ object DataModelController {
         path = "/api/data/{entityName}/{uniqueIdentifier}",
         methods = [HttpMethod.DELETE],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("uniqueIdentifier", String::class, "The unique identifier")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
         ],
         responses = [
             OpenApiResponse("204", description = "Data model deleted successfully"),
@@ -182,8 +182,8 @@ object DataModelController {
         path = "/api/data/{entityName}/{uniqueIdentifier}/migrate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("uniqueIdentifier", String::class, "The unique identifier")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = MigrateRequest::class)]),
         responses = [
@@ -215,8 +215,8 @@ object DataModelController {
         path = "/api/data/{entityName}/{versionName}/schema",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("versionName", String::class, "The version name")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "versionName", type = String::class, description = "The version name", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Schema retrieved successfully"),
@@ -238,8 +238,8 @@ object DataModelController {
         path = "/api/data/{entityName}/{versionName}/validate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name"),
-            OpenApiParam("versionName", String::class, "The version name")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
+            OpenApiParam(name = "versionName", type = String::class, description = "The version name", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = Map::class)]),
         responses = [
@@ -263,7 +263,7 @@ object DataModelController {
         path = "/api/data/{entityName}/search",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam("entityName", String::class, "The entity name")
+            OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = SearchRequestDto::class)]),
         responses = [

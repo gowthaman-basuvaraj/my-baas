@@ -6,6 +6,7 @@ import my.baas.config.AppContext.objectMapper
 import my.baas.models.DataModel
 import my.baas.models.SchemaModel
 import org.slf4j.LoggerFactory
+import java.util.concurrent.Executors
 
 enum class LifecycleEvent {
     BEFORE_SAVE,
@@ -31,6 +32,7 @@ object JavaScriptExecutionService {
         sandbox.allowGlobalsObjects(false)
         sandbox.allowPrintFunctions(false)
         sandbox.allowReadFunctions(false)
+        sandbox.executor = Executors.newSingleThreadExecutor()
 
         // Add safe JavaScript utilities
         sandbox.eval(
