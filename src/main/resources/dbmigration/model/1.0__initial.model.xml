@@ -20,40 +20,6 @@
             <column name="who_created" type="varchar" notnull="true"/>
             <column name="who_modified" type="varchar" notnull="true"/>
         </createTable>
-        <createTable name="data_model" pkName="pk_data_model">
-            <column name="id" type="bigint" primaryKey="true"/>
-            <column name="tenant_id" type="bigint" notnull="true"/>
-            <column name="schema_id" type="bigint" notnull="true" references="schema_model.id" foreignKeyName="fk_data_model_schema_id" foreignKeyIndex="ix_data_model_schema_id"/>
-            <column name="data" type="jsonb" notnull="true"/>
-            <column name="unique_identifier" type="varchar" notnull="true"/>
-            <column name="entity_name" type="varchar" notnull="true"/>
-            <column name="version_name" type="varchar" notnull="true"/>
-            <column name="deleted" type="boolean" defaultValue="false" notnull="true"/>
-            <column name="version" type="integer" notnull="true"/>
-            <column name="when_created" type="timestamp" notnull="true"/>
-            <column name="when_modified" type="timestamp" notnull="true"/>
-            <column name="who_created" type="varchar" notnull="true"/>
-            <column name="who_modified" type="varchar" notnull="true"/>
-            <uniqueConstraint name="uq_data_model_unique_identifier_entity_name_version_name__1" columnNames="unique_identifier,entity_name,version_name,tenant_id" oneToOne="false" nullableColumns=""/>
-        </createTable>
-        <createTable name="data_search_model" pkName="pk_data_search_model">
-            <column name="id" type="bigint" primaryKey="true"/>
-            <column name="tenant_id" type="bigint" notnull="true"/>
-            <column name="entity_name" type="varchar" notnull="true"/>
-            <column name="unique_identifier" type="varchar" notnull="true"/>
-            <column name="json_path" type="varchar" notnull="true"/>
-            <column name="value" type="jsonb" notnull="true"/>
-            <column name="value_type" type="varchar(7)" notnull="true" checkConstraint="check ( value_type in ('STRING','NUMBER','BOOLEAN','OBJECT','ARRAY','NULL'))" checkConstraintName="ck_data_search_model_value_type"/>
-            <column name="array_idx" type="integer"/>
-            <column name="data_created_at" type="timestamp"/>
-            <column name="data_modified_at" type="timestamp"/>
-            <column name="deleted" type="boolean" defaultValue="false" notnull="true"/>
-            <column name="version" type="integer" notnull="true"/>
-            <column name="when_created" type="timestamp" notnull="true"/>
-            <column name="when_modified" type="timestamp" notnull="true"/>
-            <column name="who_created" type="varchar" notnull="true"/>
-            <column name="who_modified" type="varchar" notnull="true"/>
-        </createTable>
         <createTable name="report_execution_log" pkName="pk_report_execution_log">
             <column name="id" type="bigint" primaryKey="true"/>
             <column name="tenant_id" type="bigint" notnull="true"/>
@@ -93,6 +59,7 @@
             <column name="completion_actions" type="jsonb" notnull="true"/>
             <column name="is_active" type="boolean" defaultValue="false" notnull="true"/>
             <column name="file_format" type="varchar(4)" notnull="true" checkConstraint="check ( file_format in ('CSV','JSON','XLS','XLSX'))" checkConstraintName="ck_report_model_file_format"/>
+            <column name="parameters" type="jsonb" notnull="true"/>
             <column name="deleted" type="boolean" defaultValue="false" notnull="true"/>
             <column name="version" type="integer" notnull="true"/>
             <column name="when_created" type="timestamp" notnull="true"/>
@@ -138,15 +105,6 @@
         </createTable>
         <createIndex indexName="ix_audit_log_tenant_id_entity_name_action_created_at_uniq_1" tableName="audit_log" columns="tenant_id,entity_name,action,created_at,unique_identifier,user_id"/>
         <createIndex indexName="ix_audit_log_tenant_id" tableName="audit_log" columns="tenant_id"/>
-        <createIndex indexName="ix_data_model_data" tableName="data_model" columns="data" definition="CREATE INDEX search_gin_data ON data_model USING GIN(data jsonb_path_ops)"/>
-        <createIndex indexName="ix_data_model_tenant_id" tableName="data_model" columns="tenant_id"/>
-        <createIndex indexName="search_value_numeric" tableName="data_search_model" columns="" definition="CREATE INDEX search_value_numeric ON data_search_model USING BTREE (((value-&gt;'value')::numeric)) where value_type = 'NUMBER'"/>
-        <createIndex indexName="search_value_text" tableName="data_search_model" columns="" definition="CREATE INDEX search_value_text ON data_search_model USING BTREE ((value-&gt;&gt;'value')) where value_type = 'STRING'"/>
-        <createIndex indexName="search_value_boolean" tableName="data_search_model" columns="" definition="CREATE INDEX search_value_text ON data_search_model USING BTREE (((value-&gt;'value')::boolean)) where value_type = 'BOOLEAN'"/>
-        <createIndex indexName="search_value_gin" tableName="data_search_model" columns="" definition="CREATE INDEX search_value_gin ON data_search_model USING GIN((value-&gt;'value') jsonb_path_ops)"/>
-        <createIndex indexName="search_gin" tableName="data_search_model" columns="" definition="CREATE INDEX search_gin ON data_search_model USING GIN(value jsonb_path_ops)"/>
-        <createIndex indexName="ix_data_search_model_tenant_id" tableName="data_search_model" columns="tenant_id"/>
-        <createIndex indexName="ix_data_search_model_entity_name" tableName="data_search_model" columns="entity_name"/>
         <createIndex indexName="report_execution_report_id_idx" tableName="report_execution_log" columns="report_id"/>
         <createIndex indexName="report_execution_status_idx" tableName="report_execution_log" columns="status,storage_location"/>
         <createIndex indexName="ix_report_execution_log_tenant_id" tableName="report_execution_log" columns="tenant_id"/>

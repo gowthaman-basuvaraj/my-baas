@@ -15,6 +15,12 @@ repositories {
 
 dependencies {
     implementation(libs.javalin)
+    implementation(libs.javalin.openapi.plugin)
+    implementation(libs.javalin.swagger.plugin)
+
+    kapt(libs.openapi.annotation.processor) {
+        exclude("ch.qos.logback", "logback-classic")
+    }
     implementation(libs.ebean)
     implementation(libs.cactusthorn.config)
     implementation(libs.jackson.databind)

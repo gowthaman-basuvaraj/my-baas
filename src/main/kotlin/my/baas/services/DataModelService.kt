@@ -20,6 +20,18 @@ import org.slf4j.LoggerFactory
 import java.text.SimpleDateFormat
 import java.util.*
 
+data class ValidationResult(
+    val valid: Boolean,
+    val errors: List<ValidationError> = emptyList(),
+    val validationSkipped: Boolean = false,
+    val reason: String? = null
+)
+
+data class ValidationError(
+    val path: String,
+    val message: String,
+    val type: String
+)
 
 class DataModelService(
     private val repository: DataRepository = DataRepositoryImpl(),
@@ -197,16 +209,16 @@ class DataModelService(
         return schema.jsonSchema
     }
 
-    fun validatePayload(entityName: String, versionName: String, payload: Map<String, Any>): Map<String, Any> {
+    fun validatePayload(entityName: String, versionName: String, payload: Map<String, Any>): ValidationResult {
         val schema = loadSchemaByEntityAndVersion(entityName, versionName)
 
         // If validation is disabled for this schema, return valid without checking
         if (!schema.isValidationEnabled) {
-            return mapOf(
-                "valid" to true,
-                "errors" to emptyList<String>(),
-                "validationSkipped" to true,
-                "reason" to "Schema validation is disabled for this entity/version"
+            return ValidationResult(
+                valid = true,
+                errors = emptyList(),
+                validationSkipped = true,
+                reason = "Schema validation is disabled for this entity/version"
             )
         }
 
@@ -217,18 +229,18 @@ class DataModelService(
         val validationResult: Set<ValidationMessage> = jsonSchema.validate(dataNode)
 
         return if (validationResult.isEmpty()) {
-            mapOf(
-                "valid" to true,
-                "errors" to emptyList<String>()
+            ValidationResult(
+                valid = true,
+                errors = emptyList()
             )
         } else {
-            mapOf(
-                "valid" to false,
-                "errors" to validationResult.map { error ->
-                    mapOf(
-                        "path" to error.property,
-                        "message" to error.message,
-                        "type" to error.type
+            ValidationResult(
+                valid = false,
+                errors = validationResult.map { error ->
+                    ValidationError(
+                        path = error.property,
+                        message = error.message,
+                        type = error.type
                     )
                 }
             )

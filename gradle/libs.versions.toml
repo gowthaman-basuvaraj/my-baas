@@ -1,5 +1,6 @@
 [versions]
 javalin = "6.7.0"
+openapi = "6.5.0"
 ebean = "15.8.1"
 cactusthorn-config = "0.81"
 kotlin = "2.1.20"
@@ -31,6 +32,10 @@ javalin = { module = "io.javalin:javalin", version.ref = "javalin" }
 ebean = { module = "io.ebean:ebean", version.ref = "ebean" }
 cactusthorn-config = { module = "net.cactusthorn.config:config-core", version.ref = "cactusthorn-config" }
 cactusthorn-config-compiler = { module = "net.cactusthorn.config:config-compiler", version.ref = "cactusthorn-config" }
+javalin-openapi-plugin = { module = "io.javalin.community.openapi:javalin-openapi-plugin", version.ref = "openapi" }
+javalin-swagger-plugin = { module = "io.javalin.community.openapi:javalin-swagger-plugin", version.ref = "openapi" }
+javalin-redoc-plugin = { module = "io.javalin.community.openapi:javalin-redoc-plugin", version.ref = "openapi" }
+openapi-annotation-processor = { module = "io.javalin.community.openapi:openapi-annotation-processor", version.ref = "openapi" }
 
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }

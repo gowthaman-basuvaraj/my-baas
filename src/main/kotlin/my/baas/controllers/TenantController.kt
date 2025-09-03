@@ -3,12 +3,25 @@ package my.baas.controllers
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
+import io.javalin.openapi.*
 import my.baas.config.AppContext
 import my.baas.models.TenantConfiguration
 import my.baas.models.TenantModel
 
 object TenantController {
 
+    @OpenApi(
+        summary = "Create a new tenant",
+        operationId = "createTenant",
+        path = "/api/tenants",
+        methods = [HttpMethod.POST],
+        requestBody = OpenApiRequestBody(content = [OpenApiContent(from = TenantModel::class)]),
+        responses = [
+            OpenApiResponse("201", description = "Tenant created successfully"),
+            OpenApiResponse("400", description = "Bad request - validation error or domain already exists")
+        ],
+        tags = ["Tenants"]
+    )
     fun create(ctx: Context) {
         val tenant = ctx.bodyAsClass(TenantModel::class.java)
 
@@ -29,6 +42,21 @@ object TenantController {
         ctx.status(201).json(tenant)
     }
 
+    @OpenApi(
+        summary = "Get a tenant by ID",
+        operationId = "getTenant",
+        path = "/api/tenants/{id}",
+        methods = [HttpMethod.GET],
+        pathParams = [
+            OpenApiParam("id", Long::class, "The tenant ID")
+        ],
+        responses = [
+            OpenApiResponse("200", description = "Tenant retrieved successfully"),
+            OpenApiResponse("400", description = "Invalid tenant ID"),
+            OpenApiResponse("404", description = "Tenant not found")
+        ],
+        tags = ["Tenants"]
+    )
     fun getOne(ctx: Context) {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
@@ -39,6 +67,20 @@ object TenantController {
         ctx.json(tenant)
     }
 
+    @OpenApi(
+        summary = "Get all tenants",
+        operationId = "getAllTenants",
+        path = "/api/tenants",
+        methods = [HttpMethod.GET],
+        queryParams = [
+            OpenApiParam("page", Int::class, "Page number (default: 1)", required = false),
+            OpenApiParam("pageSize", Int::class, "Page size (default: 20)", required = false)
+        ],
+        responses = [
+            OpenApiResponse("200", description = "Tenants retrieved successfully")
+        ],
+        tags = ["Tenants"]
+    )
     fun getAll(ctx: Context) {
         val page = ctx.queryParam("page")?.toIntOrNull() ?: 1
         val pageSize = ctx.queryParam("pageSize")?.toIntOrNull() ?: 20
@@ -51,6 +93,22 @@ object TenantController {
         ctx.json(tenants)
     }
 
+    @OpenApi(
+        summary = "Update a tenant",
+        operationId = "updateTenant",
+        path = "/api/tenants/{id}",
+        methods = [HttpMethod.PUT],
+        pathParams = [
+            OpenApiParam("id", Long::class, "The tenant ID")
+        ],
+        requestBody = OpenApiRequestBody(content = [OpenApiContent(from = TenantModel::class)]),
+        responses = [
+            OpenApiResponse("200", description = "Tenant updated successfully"),
+            OpenApiResponse("400", description = "Bad request - validation error or domain conflict"),
+            OpenApiResponse("404", description = "Tenant not found")
+        ],
+        tags = ["Tenants"]
+    )
     fun update(ctx: Context) {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
@@ -87,6 +145,21 @@ object TenantController {
         ctx.json(tenant)
     }
 
+    @OpenApi(
+        summary = "Delete a tenant",
+        operationId = "deleteTenant",
+        path = "/api/tenants/{id}",
+        methods = [HttpMethod.DELETE],
+        pathParams = [
+            OpenApiParam("id", Long::class, "The tenant ID")
+        ],
+        responses = [
+            OpenApiResponse("204", description = "Tenant deleted successfully"),
+            OpenApiResponse("400", description = "Invalid tenant ID"),
+            OpenApiResponse("404", description = "Tenant not found")
+        ],
+        tags = ["Tenants"]
+    )
     fun delete(ctx: Context) {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
@@ -98,6 +171,21 @@ object TenantController {
         ctx.status(204)
     }
 
+    @OpenApi(
+        summary = "Activate a tenant",
+        operationId = "activateTenant",
+        path = "/api/tenants/{id}/activate",
+        methods = [HttpMethod.POST],
+        pathParams = [
+            OpenApiParam("id", Long::class, "The tenant ID")
+        ],
+        responses = [
+            OpenApiResponse("200", description = "Tenant activated successfully"),
+            OpenApiResponse("400", description = "Invalid tenant ID"),
+            OpenApiResponse("404", description = "Tenant not found")
+        ],
+        tags = ["Tenants"]
+    )
     fun activate(ctx: Context) {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
@@ -111,6 +199,21 @@ object TenantController {
         ctx.json(mapOf("message" to "Tenant activated successfully", "tenant" to tenant))
     }
 
+    @OpenApi(
+        summary = "Deactivate a tenant",
+        operationId = "deactivateTenant",
+        path = "/api/tenants/{id}/deactivate",
+        methods = [HttpMethod.POST],
+        pathParams = [
+            OpenApiParam("id", Long::class, "The tenant ID")
+        ],
+        responses = [
+            OpenApiResponse("200", description = "Tenant deactivated successfully"),
+            OpenApiResponse("400", description = "Invalid tenant ID"),
+            OpenApiResponse("404", description = "Tenant not found")
+        ],
+        tags = ["Tenants"]
+    )
     fun deactivate(ctx: Context) {
         val tenantId = ctx.pathParam("id").toLongOrNull()
             ?: throw BadRequestResponse("Invalid tenant ID")
