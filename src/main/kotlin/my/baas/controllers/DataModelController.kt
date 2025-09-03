@@ -46,7 +46,12 @@ object DataModelController {
         methods = [HttpMethod.GET],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
-            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
+            OpenApiParam(
+                name = "uniqueIdentifier",
+                type = String::class,
+                description = "The unique identifier",
+                required = true
+            )
         ],
         responses = [
             OpenApiResponse("200", description = "Data model retrieved successfully"),
@@ -88,7 +93,15 @@ object DataModelController {
         val pageNo = ctx.queryParam("pageNo")?.toIntOrNull() ?: 1
 
         val dataModels = dataModelService.findAllByEntityName(entityName, versionName, pageNo, pageSize)
-        ctx.json(dataModels)
+
+        ctx.json(
+            mapOf(
+                "pageSize" to dataModels.pageSize,
+                "totalCount" to dataModels.totalCount,
+                "totalPageCount" to dataModels.totalPageCount,
+                "list" to dataModels.list,
+            )
+        )
     }
 
 
@@ -100,7 +113,12 @@ object DataModelController {
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
             OpenApiParam(name = "versionName", type = String::class, description = "The version name", required = true),
-            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
+            OpenApiParam(
+                name = "uniqueIdentifier",
+                type = String::class,
+                description = "The unique identifier",
+                required = true
+            )
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = Map::class)]),
         responses = [
@@ -130,7 +148,12 @@ object DataModelController {
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
             OpenApiParam(name = "versionName", type = String::class, description = "The version name", required = true),
-            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
+            OpenApiParam(
+                name = "uniqueIdentifier",
+                type = String::class,
+                description = "The unique identifier",
+                required = true
+            )
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = Map::class)]),
         responses = [
@@ -158,7 +181,12 @@ object DataModelController {
         methods = [HttpMethod.DELETE],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
-            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
+            OpenApiParam(
+                name = "uniqueIdentifier",
+                type = String::class,
+                description = "The unique identifier",
+                required = true
+            )
         ],
         responses = [
             OpenApiResponse("204", description = "Data model deleted successfully"),
@@ -183,7 +211,12 @@ object DataModelController {
         methods = [HttpMethod.POST],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
-            OpenApiParam(name = "uniqueIdentifier", type = String::class, description = "The unique identifier", required = true)
+            OpenApiParam(
+                name = "uniqueIdentifier",
+                type = String::class,
+                description = "The unique identifier",
+                required = true
+            )
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = MigrateRequest::class)]),
         responses = [
@@ -274,14 +307,14 @@ object DataModelController {
     fun search(ctx: Context) {
         val entityName = ctx.pathParam("entityName")
         val searchRequest = ctx.bodyAsClass(SearchRequestDto::class.java)
-        
+
         val results = dataModelService.search(
             entityName = entityName,
             filters = searchRequest.filters,
             pageNo = searchRequest.pageNo,
             pageSize = searchRequest.pageSize
         )
-        
+
         ctx.json(results)
     }
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ebean.PagedList
 import io.ebean.RawSql
 import io.ebean.RawSqlBuilder
+import io.javalin.http.BadRequestResponse
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.dto.FilterDto
@@ -42,14 +43,16 @@ class DataRepositoryImpl : DataRepository {
             .columnMapping("version_name", "versionName")
             .columnMapping("data", "data")
             .columnMapping("tenant_id", "tenantId")
+            .columnMapping("schema_id", "schemaId")
             .columnMapping("when_created", "whenCreated")
             .columnMapping("when_modified", "whenModified")
-            .columnMapping("version", "version")
+            .columnMapping("who_created", "whoCreated")
+            .columnMapping("who_modified", "whoModified")
             .create()
     }
 
     override fun save(dataModel: DataModel): DataModel {
-        val tenantId = dataModel.tenantId
+        val tenantId = CurrentUser.getTenant()?.id ?: throw BadRequestResponse("No tenant in context")
         val tableName = SchemaModel.generateTableName(tenantId, dataModel.entityName)
 
         val dataJson = objectMapper.writeValueAsString(dataModel.data)
@@ -111,17 +114,15 @@ class DataRepositoryImpl : DataRepository {
 
         val sql = if (versionName != null) {
             """
-                SELECT * FROM $tableName 
+                SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
                 WHERE entity_name = :entityName 
-                AND tenant_id = :tenantId
                 AND version_name = :versionName
                 ORDER BY when_created DESC
             """.trimIndent()
         } else {
             """
-                SELECT * FROM $tableName 
+                SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
                 WHERE entity_name = :entityName 
-                AND tenant_id = :tenantId
                 ORDER BY when_created DESC
             """.trimIndent()
         }
@@ -131,7 +132,6 @@ class DataRepositoryImpl : DataRepository {
         val query = AppContext.db.find(DataModel::class.java)
             .setRawSql(rawSql)
             .setParameter("entityName", entityName)
-            .setParameter("tenantId", tenantId)
 
         if (versionName != null) {
             query.setParameter("versionName", versionName)
@@ -195,10 +195,9 @@ class DataRepositoryImpl : DataRepository {
         val tableName = SchemaModel.generateTableName(tenantId, entityName)
 
         val sql = """
-            SELECT * FROM $tableName 
+            SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
             WHERE unique_identifier = :uniqueIdentifier 
             AND entity_name = :entityName 
-            AND tenant_id = :tenantId
         """.trimIndent()
 
         val rawSql = createDataModelRawSql(sql)
@@ -207,7 +206,6 @@ class DataRepositoryImpl : DataRepository {
             .setRawSql(rawSql)
             .setParameter("uniqueIdentifier", uniqueIdentifier)
             .setParameter("entityName", entityName)
-            .setParameter("tenantId", tenantId)
             .findOne()
     }
 
@@ -223,7 +221,7 @@ class DataRepositoryImpl : DataRepository {
 
         val placeholders = uniqueIdentifiers.joinToString(",") { ":uid${uniqueIdentifiers.indexOf(it)}" }
         val sql = """
-            SELECT * FROM $tableName 
+            SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
             WHERE entity_name = :entityName 
             AND tenant_id = :tenantId 
             AND unique_identifier IN ($placeholders)
@@ -291,7 +289,7 @@ class DataRepositoryImpl : DataRepository {
         val allParameters = allConditions.flatMap { it.second.toList() }.toMap()
 
         val sql = """
-            SELECT * FROM $tableName 
+            SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
             WHERE ${whereConditions.joinToString(" AND ")}
             ORDER BY when_created DESC
         """.trimIndent()

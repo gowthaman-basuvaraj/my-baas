@@ -4,6 +4,7 @@ import io.javalin.apibuilder.CrudHandler
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
 import io.javalin.openapi.*
+import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.dto.SchemaModelCreateDto
 import my.baas.dto.SchemaModelViewDto
@@ -28,14 +29,14 @@ object SchemaController : CrudHandler {
     override fun create(ctx: Context) {
         // Validate tenant limits before creating schema
         TenantLimitService.validateSchemaCreation()
-        
+
         val schemaCreateDto = ctx.bodyAsClass(SchemaModelCreateDto::class.java)
         val schema = schemaCreateDto.toModel()
         schema.save()
-        
+
         // Create the corresponding table for this schema
         TableManagementService.createDataModelTable(schema)
-        
+
         ctx.status(201).json(SchemaModelViewDto.fromModel(schema))
     }
 
@@ -95,12 +96,13 @@ object SchemaController : CrudHandler {
     override fun update(ctx: Context, resourceId: String) {
         val schema = AppContext.db.find(SchemaModel::class.java, resourceId)
             ?: throw NotFoundResponse("Schema not found")
+        val tenantId = CurrentUser.getTenant()?.id ?: throw IllegalStateException("No tenant in context")
 
         val schemaUpdateDto = ctx.bodyAsClass(SchemaModelCreateDto::class.java)
-        
+
         // Store old indexed paths for comparison
         val oldIndexedPaths = schema.indexedJsonPaths
-        
+
         schema.entityName = schemaUpdateDto.entityName
         schema.jsonSchema = schemaUpdateDto.jsonSchema
         schema.versionName = schemaUpdateDto.versionName
@@ -109,12 +111,12 @@ object SchemaController : CrudHandler {
         schema.lifecycleScripts = schemaUpdateDto.lifecycleScripts
         schema.isValidationEnabled = schemaUpdateDto.isValidationEnabled
         schema.update()
-        
+
         // Handle index changes if indexed paths have changed
         if (oldIndexedPaths != schemaUpdateDto.indexedJsonPaths) {
-            TableManagementService.updateIndexes(schema, oldIndexedPaths, schemaUpdateDto.indexedJsonPaths)
+            TableManagementService.updateIndexes(schema, oldIndexedPaths, schemaUpdateDto.indexedJsonPaths, tenantId)
         }
-        
+
         ctx.json(SchemaModelViewDto.fromModel(schema))
     }
 
@@ -127,7 +129,12 @@ object SchemaController : CrudHandler {
             OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
         queryParams = [
-            OpenApiParam(name = "dropTable", type = Boolean::class, description = "Whether to drop the corresponding table (default: false)", required = false)
+            OpenApiParam(
+                name = "dropTable",
+                type = Boolean::class,
+                description = "Whether to drop the corresponding table (default: false)",
+                required = false
+            )
         ],
         responses = [
             OpenApiResponse("204", description = "Schema deleted successfully"),
@@ -138,7 +145,7 @@ object SchemaController : CrudHandler {
     override fun delete(ctx: Context, resourceId: String) {
         val schema = AppContext.db.find(SchemaModel::class.java, resourceId)
             ?: throw NotFoundResponse("Schema not found")
-        
+
         // Drop the corresponding table only if explicitly requested
         val dropTable = ctx.queryParam("dropTable")?.toBoolean() ?: false
         if (dropTable) {
@@ -146,7 +153,7 @@ object SchemaController : CrudHandler {
                 TableManagementService.dropDataModelTable(tenantId, schema.entityName)
             }
         }
-        
+
         schema.delete()
         ctx.status(204)
     }

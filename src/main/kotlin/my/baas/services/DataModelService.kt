@@ -47,7 +47,7 @@ class DataModelService(
         val uniqueIdentifier = generateUniqueIdentifier(schema, data, entityName)
 
         val dataModel = DataModel(
-            schema = schema,
+            schemaId = schema.id,
             data = data,
             uniqueIdentifier = uniqueIdentifier,
             entityName = entityName,
@@ -87,7 +87,7 @@ class DataModelService(
         
         // Execute afterLoad hook for each result
         results.list.forEach { dataModel ->
-            jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.AFTER_LOAD, dataModel)
+            jsExecutionService.executeLifecycleScript(dataModel.loadSchema(), LifecycleEvent.AFTER_LOAD, dataModel)
         }
         
         return results
@@ -99,7 +99,7 @@ class DataModelService(
 
         // Execute afterLoad hook if dataModel exists
         dataModel?.let { dm ->
-            jsExecutionService.executeLifecycleScript(dm.schema, LifecycleEvent.AFTER_LOAD, dm)
+            jsExecutionService.executeLifecycleScript(dm.loadSchema(), LifecycleEvent.AFTER_LOAD, dm)
         }
 
         return dataModel
@@ -110,7 +110,7 @@ class DataModelService(
         val schema = loadSchemaByEntityAndVersion(entityName, versionName)
         val oldData = existingDataModel.data
 
-        existingDataModel.schema = schema
+        existingDataModel.schemaId = schema.id
         existingDataModel.data = data
         existingDataModel.entityName = entityName
         existingDataModel.versionName = versionName
@@ -153,7 +153,7 @@ class DataModelService(
         // Merge existing data with patch data
         val mergedData = deepMergeData(existingDataModel.data, patchData)
 
-        existingDataModel.schema = schema
+        existingDataModel.schemaId = schema.id
         existingDataModel.data = mergedData
         existingDataModel.entityName = entityName
         existingDataModel.versionName = versionName
@@ -186,13 +186,13 @@ class DataModelService(
     fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean {
         val dataModel = repository.findByUniqueIdentifier(entityName, uniqueIdentifier) ?: return false
         // Execute beforeDelete hook
-        jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.BEFORE_DELETE, dataModel)
+        jsExecutionService.executeLifecycleScript(dataModel.loadSchema(), LifecycleEvent.BEFORE_DELETE, dataModel)
 
         val deleted = repository.deleteByUniqueIdentifier(entityName, uniqueIdentifier)
 
         if (deleted) {
             // Execute afterDelete hook
-            jsExecutionService.executeLifecycleScript(dataModel.schema, LifecycleEvent.AFTER_DELETE, dataModel)
+            jsExecutionService.executeLifecycleScript(dataModel.loadSchema(), LifecycleEvent.AFTER_DELETE, dataModel)
 
             // Log audit trail
             AuditService.logDataModelAction(AuditAction.DELETE, dataModel, dataModel.data)
@@ -286,7 +286,7 @@ class DataModelService(
         }
 
         // Update the data model with new version and potentially modified data
-        existingDataModel.schema = destinationSchema
+        existingDataModel.schemaId = destinationSchema.id
         existingDataModel.versionName = destinationVersion
         existingDataModel.data = migratedData
 
@@ -319,11 +319,11 @@ class DataModelService(
 
     private fun validateDataAgainstSchema(dataModel: DataModel) {
         // Skip validation if disabled for this schema
-        if (!dataModel.schema.isValidationEnabled) {
+        if (!dataModel.loadSchema().isValidationEnabled) {
             return
         }
 
-        val schemaNode: JsonNode = objectMapper.valueToTree(dataModel.schema.jsonSchema)
+        val schemaNode: JsonNode = objectMapper.valueToTree(dataModel.loadSchema().jsonSchema)
         val dataNode: JsonNode = objectMapper.valueToTree(dataModel.data)
 
         val jsonSchema = schemaFactory.getSchema(schemaNode)

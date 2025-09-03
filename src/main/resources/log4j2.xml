@@ -18,6 +18,7 @@
         </RollingFile>
     </Appenders>
     <Loggers>
+        <Logger name="io.ebean.SQL" level="TRACE"/>
         <Root level="info">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="RollingFile"/>

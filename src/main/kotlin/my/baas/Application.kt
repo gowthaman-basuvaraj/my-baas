@@ -75,18 +75,20 @@ fun main() {
                             before {
                                 dataModelService.validateSchemaExistsForEntity(it.pathParam("entityName"))
                             }
+                            post("search", DataModelController::search)
                             get(DataModelController::getAll)
                             path("{versionName}") {
                                 before {
-                                    dataModelService.validateSchemaExistsForEntityAndVersion(
-                                        it.pathParam("entityName"),
-                                        it.pathParam("versionName")
-                                    )
+                                    if(!it.path().endsWith("/search")) {
+                                        dataModelService.validateSchemaExistsForEntityAndVersion(
+                                            it.pathParam("entityName"),
+                                            it.pathParam("versionName")
+                                        )
+                                    }
                                 }
                                 get(DataModelController::getAll)
                                 get("schema", DataModelController::getSchema)
                                 post("validate", DataModelController::validatePayload)
-                                post("search", DataModelController::search)
                                 post(DataModelController::create)
                                 path("{uniqueIdentifier}") {
                                     get(DataModelController::getOne)
@@ -100,9 +102,13 @@ fun main() {
                     }
                     after { CurrentUser.clear() }
                 }
+
                 // WebSocket endpoint for real-time events
                 ws("/ws/events", WebSocketHandler::configure)
             }
+            config.router.treatMultipleSlashesAsSingleSlash = true
+            config.router.ignoreTrailingSlashes = false
+            config.bundledPlugins.enableRouteOverview("/all-routes")
         }
         .start(7070)
 

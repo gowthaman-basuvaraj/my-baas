@@ -9,7 +9,7 @@ import jakarta.persistence.Version
 import java.time.Instant
 
 @MappedSuperclass
-abstract class BaseModel: Model() {
+abstract class BaseModel : Model() {
 
     @Id
     @GeneratedValue
@@ -22,14 +22,14 @@ abstract class BaseModel: Model() {
     var version: Int = 0
 
     @WhenCreated
-    lateinit var whenCreated: Instant
+    var whenCreated: Instant = Instant.now()
 
     @WhenModified
-    lateinit var whenModified: Instant
+    var whenModified: Instant = Instant.now()
 
     @WhoCreated
-    lateinit var whoCreated: String
+    var whoCreated: String = ""
 
     @WhoModified
-    lateinit var whoModified: String
+    var whoModified: String = ""
 }

@@ -35,7 +35,7 @@ class SchemaModel(
 
 ) : BaseTenantModel() {
 
-    fun generateTableName(): String {
+    fun generateTableName(tenantId: Long): String {
         return generateTableName(tenantId, entityName)
     }
     

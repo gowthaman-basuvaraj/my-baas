@@ -13,7 +13,7 @@ object TableManagementService {
 
     fun createDataModelTable(schema: SchemaModel) {
         val tenantId = CurrentUser.getTenant()?.id ?: throw IllegalStateException("No tenant in context")
-        val tableName = schema.generateTableName()
+        val tableName = schema.generateTableName(tenantId)
 
         try {
             val sql = """
@@ -24,8 +24,11 @@ object TableManagementService {
                     version_name VARCHAR(255) NOT NULL,
                     data JSONB NOT NULL,
                     tenant_id BIGINT NOT NULL,
+                    schema_id BIGINT NOT NULL,
                     when_created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     when_modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    who_created text NOT NULL,
+                    who_modified text NOT NULL,
                     version BIGINT NOT NULL DEFAULT 1,
                     CONSTRAINT ${tableName}_unique_idx UNIQUE (unique_identifier, entity_name, version_name, tenant_id)
                 )
@@ -42,7 +45,11 @@ object TableManagementService {
             val tenantIndexSql = "CREATE INDEX IF NOT EXISTS ${tableName}_tenant_idx ON $tableName (tenant_id)"
             AppContext.db.sqlUpdate(tenantIndexSql).execute()
 
-            updateIndexes(schema, emptyList(), schema.indexedJsonPaths)
+            // Create an index on audit columns for performance
+            val auditIndexSql = "CREATE INDEX IF NOT EXISTS ${tableName}_audit_col_idx ON $tableName (when_created, who_created, when_modified, who_modified)"
+            AppContext.db.sqlUpdate(auditIndexSql).execute()
+
+            updateIndexes(schema, emptyList(), schema.indexedJsonPaths, tenantId)
 
             logger.info("Created table [$tableName] with [${schema.indexedJsonPaths.size}] GIN indexes for entity [${schema.entityName}] and tenant [$tenantId]")
 
@@ -65,8 +72,8 @@ object TableManagementService {
         }
     }
 
-    fun updateIndexes(schema: SchemaModel, oldIndexedPaths: List<String>, newIndexedPaths: List<String>) {
-        val tableName = schema.generateTableName()
+    fun updateIndexes(schema: SchemaModel, oldIndexedPaths: List<String>, newIndexedPaths: List<String>, tenantId: Long) {
+        val tableName = schema.generateTableName(tenantId)
 
         // Calculate differences
         val removedPaths = oldIndexedPaths - newIndexedPaths.toSet()
@@ -84,7 +91,7 @@ object TableManagementService {
 
                 // Create new indexes concurrently
                 addedPaths.forEach { jsonPath ->
-                    createIndexForPathConcurrently(tableName, jsonPath)
+                    createIndexForPath(tableName, jsonPath)
                 }
 
                 logger.info("Index update completed for table [$tableName]")
@@ -108,7 +115,7 @@ object TableManagementService {
         }
     }
 
-    private fun createIndexForPathConcurrently(tableName: String, jsonPath: String) {
+    private fun createIndexForPath(tableName: String, jsonPath: String) {
         try {
             val cleanPath = jsonPath.replace(Regex("[^a-zA-Z0-9_]"), "_")
             val indexName = "${tableName}_${cleanPath}_gin_idx"
@@ -116,17 +123,17 @@ object TableManagementService {
             val pathChain = parseJsonPathToChain(jsonPath)
             if (pathChain.isNotEmpty()) {
                 val pathIndexSql = """
-                CREATE INDEX CONCURRENTLY IF NOT EXISTS $indexName 
+                CREATE INDEX IF NOT EXISTS $indexName 
                 ON $tableName USING GIN (($pathChain))
             """.trimIndent()
 
                 AppContext.db.sqlUpdate(pathIndexSql).execute()
-                logger.info("Created concurrent index [$indexName] for path [$jsonPath]")
+                logger.info("Created index [$indexName] for path [$jsonPath]")
             } else {
                 logger.warn("Failed to create index for path [$jsonPath] => [$pathChain]")
             }
         } catch (e: Exception) {
-            logger.warn("Failed to create concurrent index for path [$jsonPath]: ${e.message}", e)
+            logger.warn("Failed to create index for path [$jsonPath]: ${e.message}", e)
         }
     }
 
