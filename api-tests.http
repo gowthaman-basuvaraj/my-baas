@@ -152,7 +152,7 @@ Host: test.example.com
 > {% 
 client.test("Users retrieved successfully", function() {
     client.assert(response.status === 200, "Expected status 200 - OK");
-    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should contain user data");
+    client.assert(Array.isArray(response.body.list), "Response should contain user data");
 });
 %}
 

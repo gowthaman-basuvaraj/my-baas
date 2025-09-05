@@ -62,8 +62,8 @@ class DataRepositoryImpl : DataRepository {
         // Use JDBC connection for raw SQL with RETURNING clause
         AppContext.db.dataSource().connection.use { conn ->
             val sql = """
-                INSERT INTO $tableName (unique_identifier, entity_name, version_name, data, tenant_id, when_created, when_modified, version)
-                VALUES (?, ?, ?, ?::jsonb, ?, ?, ?, 1)
+                INSERT INTO $tableName (unique_identifier, entity_name, version_name, data, tenant_id, when_created, when_modified, version, schema_id, who_created, who_modified)
+                VALUES (?, ?, ?, ?::jsonb, ?, ?, ?, 1, ?, ?, ?)
                 RETURNING id, when_created, when_modified, version
             """.trimIndent()
 
@@ -75,6 +75,9 @@ class DataRepositoryImpl : DataRepository {
                 stmt.setLong(5, tenantId)
                 stmt.setTimestamp(6, now)
                 stmt.setTimestamp(7, now)
+                stmt.setLong(8, dataModel.schemaId)
+                stmt.setString(9, CurrentUser.get().userId)
+                stmt.setString(10, CurrentUser.get().userId)
 
                 val rs = stmt.executeQuery()
                 if (rs.next()) {
