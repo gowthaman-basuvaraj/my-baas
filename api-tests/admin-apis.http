@@ -16,6 +16,14 @@ Authorization: {{authToken}}
   "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"]
 }
 
+> {% 
+client.test("Tenant created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.id !== undefined, "Response should contain tenant ID");
+    client.assert(response.body.name === "Acme Corporation", "Name should match");
+});
+%}
+
 ###
 
 ### Create another tenant
@@ -28,6 +36,14 @@ Authorization: {{authToken}}
   "domain": "beta.example.com",
   "isActive": true
 }
+
+> {% 
+client.test("Second tenant created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.id !== undefined, "Response should contain tenant ID");
+    client.assert(response.body.name === "Beta Company", "Name should match");
+});
+%}
 
 ###
 
@@ -46,11 +62,26 @@ Authorization: {{authToken}}
   }
 }
 
+> {% 
+client.test("Tenant with JWKS config created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.id !== undefined, "Response should contain tenant ID");
+    client.assert(response.body.config.jwksUri !== undefined, "Config should contain JWKS URI");
+});
+%}
+
 ###
 
 ### Get all tenants with pagination
 GET {{baseUrl}}/admin/tenants?page=1&pageSize=10
 Authorization: {{authToken}}
+
+> {% 
+client.test("Tenants retrieved successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should be an array or have content property");
+});
+%}
 
 ###
 
@@ -58,6 +89,14 @@ Authorization: {{authToken}}
 # Replace {id} with actual tenant ID from create response
 GET {{baseUrl}}/admin/tenants/1
 Authorization: {{authToken}}
+
+> {% 
+client.test("Tenant retrieved by ID successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.id !== undefined, "Response should contain tenant ID");
+    client.assert(response.body.name !== undefined, "Response should contain tenant name");
+});
+%}
 
 ###
 
@@ -74,12 +113,26 @@ Authorization: {{authToken}}
   "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12"]
 }
 
+> {% 
+client.test("Tenant updated successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.name === "Acme Corporation Updated", "Name should be updated");
+    client.assert(response.body.allowedIps.length === 3, "Should have 3 allowed IP ranges");
+});
+%}
+
 ###
 
 ### Activate tenant
 # Replace {id} with actual tenant ID
 POST {{baseUrl}}/admin/tenants/1/activate
 Authorization: {{authToken}}
+
+> {% 
+client.test("Tenant activated successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+});
+%}
 
 ###
 
@@ -88,12 +141,24 @@ Authorization: {{authToken}}
 POST {{baseUrl}}/admin/tenants/1/deactivate
 Authorization: {{authToken}}
 
+> {% 
+client.test("Tenant deactivated successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+});
+%}
+
 ###
 
 ### Delete tenant
 # Replace {id} with actual tenant ID
 DELETE {{baseUrl}}/admin/tenants/1
 Authorization: {{authToken}}
+
+> {% 
+client.test("Tenant deleted successfully", function() {
+    client.assert(response.status === 204, "Expected status 204 - No Content");
+});
+%}
 
 ###
 
@@ -104,6 +169,12 @@ Authorization: {{authToken}}
 ### Test unauthorized admin access
 GET {{baseUrl}}/admin/tenants
 X-Admin-Token: wrong-token
+
+> {% 
+client.test("Unauthorized access blocked", function() {
+    client.assert(response.status === 401 || response.status === 403, "Expected status 401/403 - Unauthorized/Forbidden");
+});
+%}
 
 ###
 
@@ -116,5 +187,11 @@ Authorization: {{authToken}}
   "name": "",
   "domain": "invalid-domain"
 }
+
+> {% 
+client.test("Invalid tenant data rejected", function() {
+    client.assert(response.status === 400, "Expected status 400 - Bad Request");
+});
+%}
 
 ###

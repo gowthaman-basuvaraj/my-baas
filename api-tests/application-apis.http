@@ -16,6 +16,14 @@ Host: {{tenantHost}}
   "isActive": true
 }
 
+> {% 
+client.test("Ecommerce application created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.applicationName === "ecommerce-app", "Application name should match");
+    client.assert(response.body.id !== undefined, "Response should contain application ID");
+});
+%}
+
 ###
 
 ### Create another application - analytics
@@ -29,6 +37,14 @@ Host: {{tenantHost}}
   "description": "Analytics and reporting application",
   "isActive": true
 }
+
+> {% 
+client.test("Analytics application created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.applicationName === "analytics-app", "Application name should match");
+    client.assert(response.body.id !== undefined, "Response should contain application ID");
+});
+%}
 
 ###
 
@@ -44,12 +60,27 @@ Host: {{tenantHost}}
   "isActive": true
 }
 
+> {% 
+client.test("CMS application created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.applicationName === "cms-app", "Application name should match");
+    client.assert(response.body.id !== undefined, "Response should contain application ID");
+});
+%}
+
 ###
 
 ### Get all applications
 GET {{baseUrl}}/api/applications
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Applications retrieved successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should be an array or have content property");
+});
+%}
 
 ###
 
@@ -58,6 +89,14 @@ Host: {{tenantHost}}
 GET {{baseUrl}}/api/applications/1
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Application retrieved by ID successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.id !== undefined, "Response should contain application ID");
+    client.assert(response.body.applicationName !== undefined, "Response should contain application name");
+});
+%}
 
 ###
 
@@ -74,6 +113,14 @@ Host: {{tenantHost}}
   "isActive": true
 }
 
+> {% 
+client.test("Application updated successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.applicationName === "ecommerce-app-updated", "Application name should be updated");
+    client.assert(response.body.description === "Updated e-commerce application description", "Description should be updated");
+});
+%}
+
 ###
 
 ### Update application status to inactive
@@ -89,6 +136,13 @@ Host: {{tenantHost}}
   "isActive": false
 }
 
+> {% 
+client.test("Application status updated to inactive", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.isActive === false, "Application should be inactive");
+});
+%}
+
 ###
 
 ### Delete application
@@ -96,6 +150,12 @@ Host: {{tenantHost}}
 DELETE {{baseUrl}}/api/applications/3
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Application deleted successfully", function() {
+    client.assert(response.status === 204, "Expected status 204 - No Content");
+});
+%}
 
 ###
 
@@ -115,6 +175,12 @@ Host: {{tenantHost}}
   "isActive": true
 }
 
+> {% 
+client.test("Duplicate application name rejected", function() {
+    client.assert(response.status === 400 || response.status === 409, "Expected status 400/409 - Bad Request/Conflict");
+});
+%}
+
 ###
 
 ### Test creating application with invalid name
@@ -129,11 +195,23 @@ Host: {{tenantHost}}
   "isActive": true
 }
 
+> {% 
+client.test("Empty application name rejected", function() {
+    client.assert(response.status === 400, "Expected status 400 - Bad Request");
+});
+%}
+
 ###
 
 ### Test getting non-existent application
 GET {{baseUrl}}/api/applications/99999
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Non-existent application not found", function() {
+    client.assert(response.status === 404, "Expected status 404 - Not Found");
+});
+%}
 
 ###

@@ -62,6 +62,15 @@ Host: {{tenantHost}}
   "isValidationEnabled": true
 }
 
+> {% 
+client.test("Users schema v1 created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.entityName === "users", "Entity name should match");
+    client.assert(response.body.versionName === "v1", "Version name should match");
+    client.assert(response.body.id !== undefined, "Response should contain schema ID");
+});
+%}
+
 ###
 
 ### Create schema v2 for migration testing
@@ -171,6 +180,14 @@ Host: {{tenantHost}}
   "isValidationEnabled": true
 }
 
+> {% 
+client.test("Analytics events schema created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.entityName === "events", "Entity name should match");
+    client.assert(response.body.versionName === "v1", "Version name should match");
+});
+%}
+
 ###
 
 ### Create products schema for ecommerce-app
@@ -227,6 +244,13 @@ GET {{baseUrl}}/api/applications/ecommerce-app/schemas
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
+> {% 
+client.test("Ecommerce schemas retrieved successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should be an array or have content property");
+});
+%}
+
 ###
 
 ### Get all schemas for analytics-app
@@ -241,6 +265,14 @@ Host: {{tenantHost}}
 GET {{baseUrl}}/api/applications/ecommerce-app/schemas/1
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Schema retrieved by ID successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.id !== undefined, "Response should contain schema ID");
+    client.assert(response.body.entityName !== undefined, "Response should contain entity name");
+});
+%}
 
 ###
 
@@ -285,6 +317,12 @@ Host: {{tenantHost}}
 DELETE {{baseUrl}}/api/applications/ecommerce-app/schemas/1
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Schema deleted successfully", function() {
+    client.assert(response.status === 204, "Expected status 204 - No Content");
+});
+%}
 
 ###
 

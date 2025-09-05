@@ -26,6 +26,13 @@ Host: {{tenantHost}}
   "tags": ["test", "validation"]
 }
 
+> {% 
+client.test("Valid payload validation passed", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.valid === true, "Validation should pass");
+});
+%}
+
 ###
 
 ### Validate payload against schema - Invalid payload (format violation)
@@ -39,6 +46,14 @@ Host: {{tenantHost}}
   "email": "invalid-email",
   "age": "not-a-number"
 }
+
+> {% 
+client.test("Invalid payload validation failed", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(response.body.valid === false, "Validation should fail");
+    client.assert(response.body.errors !== undefined && response.body.errors.length > 0, "Should have validation errors");
+});
+%}
 
 ###
 
@@ -99,6 +114,14 @@ Host: {{tenantHost}}
   "tags": ["developer", "javascript", "backend"]
 }
 
+> {% 
+client.test("User data created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.id !== undefined, "Response should contain data ID");
+    client.assert(response.body.uniqueIdentifier !== undefined, "Response should contain unique identifier");
+});
+%}
+
 ###
 
 ### Create another user for testing
@@ -142,6 +165,13 @@ Host: {{tenantHost}}
 GET {{baseUrl}}/api/applications/ecommerce-app/data/users
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Users retrieved successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should be an array or have content property");
+});
+%}
 
 ###
 
@@ -219,6 +249,13 @@ Host: {{tenantHost}}
   "pageNo": 1,
   "pageSize": 10
 }
+
+> {% 
+client.test("User search completed successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should contain search results");
+});
+%}
 
 ###
 
@@ -308,6 +345,14 @@ Host: {{tenantHost}}
     "userAgent": "Mozilla/5.0..."
   }
 }
+
+> {% 
+client.test("Event data created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.eventType === "page_view", "Event type should match");
+    client.assert(response.body.uniqueIdentifier !== undefined, "Response should contain unique identifier");
+});
+%}
 
 ###
 

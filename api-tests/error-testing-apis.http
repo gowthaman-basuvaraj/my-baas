@@ -12,6 +12,12 @@
 GET {{baseUrl}}/api/applications
 Host: {{tenantHost}}
 
+> {% 
+client.test("Missing token rejected", function() {
+    client.assert(response.status === 401, "Expected status 401 - Unauthorized");
+});
+%}
+
 ###
 
 ### Test unauthorized access - invalid token
@@ -19,17 +25,35 @@ GET {{baseUrl}}/api/applications
 Authorization: Bearer invalid-token-123
 Host: {{tenantHost}}
 
+> {% 
+client.test("Invalid token rejected", function() {
+    client.assert(response.status === 401, "Expected status 401 - Unauthorized");
+});
+%}
+
 ###
 
 ### Test admin endpoint with regular token
 GET {{baseUrl}}/admin/tenants
 Authorization: {{authToken}}
 
+> {% 
+client.test("Regular token on admin endpoint rejected", function() {
+    client.assert(response.status === 401 || response.status === 403, "Expected status 401/403 - Unauthorized/Forbidden");
+});
+%}
+
 ###
 
 ### Test unauthorized admin access - wrong token
 GET {{baseUrl}}/admin/tenants
 X-Admin-Token: wrong-token
+
+> {% 
+client.test("Wrong admin token rejected", function() {
+    client.assert(response.status === 401 || response.status === 403, "Expected status 401/403 - Unauthorized/Forbidden");
+});
+%}
 
 ###
 
@@ -48,6 +72,12 @@ Host: {{tenantHost}}
   "description": "Duplicate application name",
   "isActive": true
 }
+
+> {% 
+client.test("Duplicate application name rejected", function() {
+    client.assert(response.status === 400 || response.status === 409, "Expected status 400/409 - Bad Request/Conflict");
+});
+%}
 
 ###
 
@@ -69,6 +99,12 @@ Host: {{tenantHost}}
 GET {{baseUrl}}/api/applications/99999
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Non-existent application returns 404", function() {
+    client.assert(response.status === 404, "Expected status 404 - Not Found");
+});
+%}
 
 ###
 
@@ -163,6 +199,12 @@ GET {{baseUrl}}/api/applications/ecommerce-app/data/nonexistent
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
+> {% 
+client.test("Non-existent entity returns 404", function() {
+    client.assert(response.status === 404, "Expected status 404 - Not Found");
+});
+%}
+
 ###
 
 ### Test 404 - Version not found
@@ -200,6 +242,12 @@ Host: {{tenantHost}}
 {
   "name": "Missing Required Email Field"
 }
+
+> {% 
+client.test("Schema validation error returns 400", function() {
+    client.assert(response.status === 400, "Expected status 400 - Bad Request");
+});
+%}
 
 ###
 

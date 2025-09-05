@@ -66,6 +66,14 @@ Authorization: {{authToken}}
   "isActive": true
 }
 
+> {% 
+client.test("Tenant created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.id !== undefined, "Response should contain tenant ID");
+    client.assert(response.body.name === "Test Company", "Name should match");
+});
+%}
+
 ###
 
 ### 2. Create Application (Tenant-scoped)
@@ -79,6 +87,14 @@ Host: test.example.com
   "description": "Test application",
   "isActive": true
 }
+
+> {% 
+client.test("Application created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.applicationName === "test-app", "Application name should match");
+    client.assert(response.body.id !== undefined, "Response should contain application ID");
+});
+%}
 
 ###
 
@@ -116,6 +132,13 @@ Host: test.example.com
   "email": "john@example.com"
 }
 
+> {% 
+client.test("User data created successfully", function() {
+    client.assert(response.status === 201, "Expected status 201 - Created");
+    client.assert(response.body.uniqueIdentifier !== undefined, "Response should contain unique identifier");
+});
+%}
+
 ###
 
 ### 5. Query Data
@@ -123,8 +146,42 @@ GET {{baseUrl}}/api/applications/test-app/data/users
 Authorization: {{authToken}}
 Host: test.example.com
 
+> {% 
+client.test("Users retrieved successfully", function() {
+    client.assert(response.status === 200, "Expected status 200 - OK");
+    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should contain user data");
+});
+%}
+
 ###
 
+### ============================================
+### RESPONSE HANDLING & TESTING
+### ============================================
+### Each HTTP request includes response validation:
+### - Checks expected HTTP status codes
+### - Validates response body structure  
+### - Verifies key fields are present
+### - Tests business logic expectations
+###
+### Response Handler Format:
+### > {% 
+### client.test("Test description", function() {
+###     client.assert(response.status === 201, "Expected status 201");
+###     client.assert(response.body.id !== undefined, "Should have ID");
+### });
+### %}
+###
+### Common Status Code Expectations:
+### - 200: Successful GET/PUT operations
+### - 201: Successful POST (resource created)
+### - 204: Successful DELETE operations
+### - 400: Bad Request (validation errors)
+### - 401: Unauthorized (missing/invalid auth)
+### - 403: Forbidden (insufficient permissions)  
+### - 404: Not Found (resource doesn't exist)
+### - 409: Conflict (duplicate resource)
+###
 ### ============================================
 ### CONFIGURATION VARIABLES
 ### ============================================
