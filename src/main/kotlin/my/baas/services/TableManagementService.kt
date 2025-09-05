@@ -26,12 +26,14 @@ object TableManagementService {
                     data JSONB NOT NULL,
                     tenant_id BIGINT NOT NULL,
                     schema_id BIGINT NOT NULL,
+                    application_id BIGINT NOT NULL,
                     when_created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     when_modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     who_created text NOT NULL,
                     who_modified text NOT NULL,
+                    deleted boolean default false,
                     version BIGINT NOT NULL DEFAULT 1,
-                    CONSTRAINT ${tableName}_unique_idx UNIQUE (unique_identifier, entity_name, version_name, tenant_id)
+                    CONSTRAINT ${tableName}_unique_idx UNIQUE (unique_identifier, entity_name, tenant_id, application_id)
                 )
             """.trimIndent()
 

@@ -8,7 +8,6 @@ import io.ebean.PagedList
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
-import my.baas.config.AppContext
 import my.baas.config.AppContext.objectMapper
 import my.baas.dto.FilterDto
 import my.baas.models.AuditAction
@@ -44,7 +43,7 @@ class DataModelService(
 
     fun create(entityName: String, versionName: String, data: Map<String, Any>): DataModel {
         val schema = loadSchemaByEntityAndVersion(entityName, versionName)
-        val uniqueIdentifier = generateUniqueIdentifier(schema, data, entityName)
+        val uniqueIdentifier = generateUniqueIdentifier(schema, data, entityName, versionName)
 
         val dataModel = DataModel(
             schemaId = schema.id,
@@ -84,12 +83,12 @@ class DataModelService(
 
     fun search(entityName: String, filters: List<FilterDto>, pageNo: Int, pageSize: Int): PagedList<DataModel> {
         val results = repository.search(entityName, filters, pageNo, pageSize)
-        
+
         // Execute afterLoad hook for each result
         results.list.forEach { dataModel ->
             jsExecutionService.executeLifecycleScript(dataModel.loadSchema(), LifecycleEvent.AFTER_LOAD, dataModel)
         }
-        
+
         return results
     }
 
@@ -348,22 +347,23 @@ class DataModelService(
             ?: throw NotFoundResponse("Schema not found for entity: '$entityName', version: '$versionName'")
     }
 
-    private fun generateUniqueIdentifier(schema: SchemaModel, data: Map<String, Any>, entityName: String): String {
-        val formatter = schema.uniqueIdentifierFormatter.replace("{entity}", entityName)
-        var identifier = formatter
+    private fun generateUniqueIdentifier(schema: SchemaModel, data: Map<String, Any>, entityName: String, versionName: String): String {
 
         // Replace system placeholders
-        identifier = identifier.replace("{timestamp}", System.currentTimeMillis().toString())
-        identifier = identifier.replace("{uuid}", UUID.randomUUID().toString())
-        identifier = identifier.replace("{date}", SimpleDateFormat("yyyyMMdd").format(Date()))
-        identifier = identifier.replace("{datetime}", SimpleDateFormat("yyyyMMdd_HHmmss").format(Date()))
+        var identifier = schema.uniqueIdentifierFormatter
+            .replace("{entity}", entityName)
+            .replace("{version}", versionName)
+            .replace("{timestamp}", System.currentTimeMillis().toString())
+            .replace("{uuid}", UUID.randomUUID().toString())
+            .replace("{date}", SimpleDateFormat("yyyyMMdd").format(Date()))
+            .replace("{datetime}", SimpleDateFormat("yyyyMMdd_HHmmss").format(Date()))
 
         // Replace placeholders in the formatter with actual data values
         data.forEach { (key, value) ->
             identifier = identifier.replace("{$key}", value.toString())
         }
 
-        return identifier.replace(Regex("[^a-zA-Z0-9_\\-/]"), "").uppercase()
+        return identifier
     }
 
     private fun publishEvent(

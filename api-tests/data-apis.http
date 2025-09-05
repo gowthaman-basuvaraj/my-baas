@@ -461,16 +461,41 @@ Host: {{tenantHost}}
 
 ### Delete user data model
 # Replace {uniqueIdentifier} with actual value
-DELETE {{baseUrl}}/api/applications/ecommerce-app/data/users/john.doe@example.com-1234567890
+DELETE {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/john.doe@example.com-1234567890
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("User data deleted successfully", function() {
+    client.assert(response.status === 204, "Expected status 204 - No Content");
+});
+%}
 
 ###
 
 ### Delete event data model
 # Replace {uniqueIdentifier} with actual value
-DELETE {{baseUrl}}/api/applications/analytics-app/data/events/user123-session456-2023-12-01T10:30:00Z
+DELETE {{baseUrl}}/api/applications/analytics-app/data/events/v1/user123-session456-2023-12-01T10:30:00Z
 Authorization: {{authToken}}
 Host: {{tenantHost}}
+
+> {% 
+client.test("Event data deleted successfully", function() {
+    client.assert(response.status === 204, "Expected status 204 - No Content");
+});
+%}
+
+###
+
+### Try to delete non-existent data model (should return 404)
+DELETE {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/non-existent-id
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+> {% 
+client.test("Non-existent data model returns 404", function() {
+    client.assert(response.status === 404, "Expected status 404 - Not Found");
+});
+%}
 
 ###

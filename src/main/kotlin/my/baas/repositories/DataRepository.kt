@@ -18,14 +18,13 @@ import java.time.Instant
 
 interface DataRepository {
     fun save(dataModel: DataModel): DataModel
-    fun findById(id: Long): DataModel?
-    fun findAll(): List<DataModel>
+    fun findById(id: Long, entityName: String): DataModel?
     fun findAllByEntityName(entityName: String, versionName: String?, pageNo: Int, pageSize: Int): PagedList<DataModel>
     fun update(dataModel: DataModel): DataModel
-    fun deleteById(id: Long): Boolean
+    fun deleteById(id: Long, entityName: String, reallyDelete: Boolean = false): Boolean
     fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel?
     fun findByUniqueIdentifiers(entityName: String, uniqueIdentifiers: List<String>): List<DataModel>
-    fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean
+    fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String, reallyDelete: Boolean = false): Boolean
     fun search(entityName: String, filters: List<FilterDto>, pageNo: Int, pageSize: Int): PagedList<DataModel>
     fun findSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel?
     fun validateSchemaExistsForEntityAndVersion(entityName: String, versionName: String? = null)
@@ -62,8 +61,8 @@ class DataRepositoryImpl : DataRepository {
         // Use JDBC connection for raw SQL with RETURNING clause
         AppContext.db.dataSource().connection.use { conn ->
             val sql = """
-                INSERT INTO $tableName (unique_identifier, entity_name, version_name, data, tenant_id, when_created, when_modified, version, schema_id, who_created, who_modified)
-                VALUES (?, ?, ?, ?::jsonb, ?, ?, ?, 1, ?, ?, ?)
+                INSERT INTO $tableName (unique_identifier, entity_name, version_name, data, tenant_id, when_created, when_modified, version, schema_id, who_created, who_modified, application_id)
+                VALUES (?, ?, ?, ?::jsonb, ?, ?, ?, 1, ?, ?, ?, ?)
                 RETURNING id, when_created, when_modified, version
             """.trimIndent()
 
@@ -78,6 +77,10 @@ class DataRepositoryImpl : DataRepository {
                 stmt.setLong(8, dataModel.schemaId)
                 stmt.setString(9, CurrentUser.get().userId)
                 stmt.setString(10, CurrentUser.get().userId)
+                stmt.setLong(
+                    11,
+                    CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+                )
 
                 val rs = stmt.executeQuery()
                 if (rs.next()) {
@@ -94,17 +97,32 @@ class DataRepositoryImpl : DataRepository {
         }
     }
 
-    override fun findById(id: Long): DataModel? {
-        // This method would need tenant context to determine the correct table
-        // For now, we'll use the legacy data_model table
-        return AppContext.db.find(DataModel::class.java, id)
+    override fun findById(id: Long, entityName: String): DataModel? {
+        val tenantId = CurrentUser.getTenant()?.id
+            ?: throw IllegalStateException("No tenant in context")
+        val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
+
+        val sql = """
+                SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
+                WHERE entity_name = :entityName 
+                AND id = :id
+                AND application_id = :appId
+                AND deleted = false
+                ORDER BY when_created DESC
+                LIMIT 1
+            """.trimIndent()
+        val rawSql = createDataModelRawSql(sql)
+
+        val query = AppContext.db.find(DataModel::class.java)
+            .setRawSql(rawSql)
+            .setParameter("entityName", entityName)
+            .setParameter("id", id)
+            .setParameter("appId", applicationId)
+
+        return query.findOne()
     }
 
-    override fun findAll(): List<DataModel> {
-        // This method would need tenant context to determine the correct table
-        // For now, we'll use the legacy data_model table
-        return AppContext.db.find(DataModel::class.java).findList()
-    }
 
     override fun findAllByEntityName(
         entityName: String,
@@ -122,12 +140,16 @@ class DataRepositoryImpl : DataRepository {
                 SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
                 WHERE entity_name = :entityName 
                 AND version_name = :versionName
+                AND application_id = :appId
+                AND deleted = false
                 ORDER BY when_created DESC
             """.trimIndent()
         } else {
             """
                 SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
-                WHERE entity_name = :entityName 
+                WHERE entity_name = :entityName
+                AND application_id = :appId
+                AND deleted = false
                 ORDER BY when_created DESC
             """.trimIndent()
         }
@@ -141,6 +163,7 @@ class DataRepositoryImpl : DataRepository {
         if (versionName != null) {
             query.setParameter("versionName", versionName)
         }
+        query.setParameter("appId", applicationId)
 
         return query
             .setFirstRow((pageNo - 1) * pageSize)
@@ -157,8 +180,8 @@ class DataRepositoryImpl : DataRepository {
         val now = Timestamp.from(Instant.now())
         val sql = """
                 UPDATE $tableName 
-                SET data = cast(:data as jsonb), version_name = :versionName, when_modified = whenModified, version = version + 1
-                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId
+                SET data = cast(:data as jsonb), version_name = :versionName, when_modified = whenModified, version = version + 1, who_modified = :whoModified
+                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId and applicationId  = :appId
                 RETURNING id, when_modified, version
             """.trimIndent()
 
@@ -172,6 +195,8 @@ class DataRepositoryImpl : DataRepository {
                 stmt.setString(4, dataModel.uniqueIdentifier)
                 stmt.setString(5, dataModel.entityName)
                 stmt.setLong(6, tenantId)
+                stmt.setString(7, CurrentUser.get().userId)
+                stmt.setLong(8, applicationId)
 
                 val rs = stmt.executeQuery()
                 if (rs.next()) {
@@ -185,11 +210,11 @@ class DataRepositoryImpl : DataRepository {
         }
     }
 
-    override fun deleteById(id: Long): Boolean {
+    override fun deleteById(id: Long, entityName: String, reallyDelete: Boolean): Boolean {
         // This method would need tenant context to determine the correct table
-        val dataModel = findById(id)
+        val dataModel = findById(id, entityName)
         return if (dataModel != null) {
-            deleteByUniqueIdentifier(dataModel.entityName, dataModel.uniqueIdentifier)
+            deleteByUniqueIdentifier(entityName, dataModel.uniqueIdentifier, reallyDelete)
         } else {
             false
         }
@@ -250,21 +275,42 @@ class DataRepositoryImpl : DataRepository {
         return query.findList()
     }
 
-    override fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean {
+    override fun deleteByUniqueIdentifier(
+        entityName: String,
+        uniqueIdentifier: String,
+        reallyDelete: Boolean
+    ): Boolean {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
         val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
         val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
-        val sql = """
+        if (reallyDelete) {
+
+            val sql = """
                 DELETE FROM $tableName 
                 WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId
             """.trimIndent()
-        return AppContext.db.sqlUpdate(sql)
-            .setParameter("uniqueIdentifier", uniqueIdentifier)
-            .setParameter("entityName", entityName)
-            .setParameter("tenantId", tenantId)
-            .execute() > 0
+            return AppContext.db.sqlUpdate(sql)
+                .setParameter("uniqueIdentifier", uniqueIdentifier)
+                .setParameter("entityName", entityName)
+                .setParameter("tenantId", tenantId)
+                .execute() > 0
 
+        } else {
+
+            val sql = """
+                update $tableName set deleted = true, who_modified = :whoModified, when_modified = :whenModified 
+                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId
+            """.trimIndent()
+            return AppContext.db.sqlUpdate(sql)
+                .setParameter("uniqueIdentifier", uniqueIdentifier)
+                .setParameter("entityName", entityName)
+                .setParameter("tenantId", tenantId)
+                .setParameter("whoModified", CurrentUser.get().userId)
+                .setParameter("whenModified", Timestamp.from(Instant.now()))
+                .execute() > 0
+
+        }
     }
 
     override fun search(
@@ -325,58 +371,80 @@ class DataRepositoryImpl : DataRepository {
     private fun buildFilterCondition(filter: FilterDto, index: Int): Pair<String, Map<String, Any>> {
         val paramKey = "filter$index"
         val operator = filter.operator.getOperatorSymbol()
-        
+
         return when {
             filter.operator.isListOperator() -> {
                 buildListOperatorCondition(filter, paramKey, operator)
             }
+
             filter.operator.requiresJsonSerialization() -> {
                 buildJsonOperatorCondition(filter, paramKey, operator)
             }
+
             filter.operator.usesDataRoot() -> {
                 buildDataRootOperatorCondition(filter, paramKey, operator)
             }
+
             filter.operator == FilterOperator.HAS_KEY -> {
                 val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
                 "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
             }
+
             else -> {
                 buildSimpleOperatorCondition(filter, paramKey, operator)
             }
         }
     }
-    
-    private fun buildSimpleOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+
+    private fun buildSimpleOperatorCondition(
+        filter: FilterDto,
+        paramKey: String,
+        operator: String
+    ): Pair<String, Map<String, Any>> {
         val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
         val castType = if (filter.operator.requiresNumericCasting()) "numeric" else "text"
         return "($jsonPathChain)::$castType $operator :$paramKey" to mapOf(paramKey to filter.value)
     }
-    
-    private fun buildListOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+
+    private fun buildListOperatorCondition(
+        filter: FilterDto,
+        paramKey: String,
+        operator: String
+    ): Pair<String, Map<String, Any>> {
         val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
         val values = filter.getListValue()
-        
+
         return when (filter.operator) {
             FilterOperator.IN, FilterOperator.NOT_IN -> {
                 val placeholders = values.mapIndexed { i, _ -> ":${paramKey}_$i" }.joinToString(",")
                 val parameters = values.mapIndexed { i, value -> "${paramKey}_$i" to (value ?: "") }.toMap()
                 "($jsonPathChain)::text $operator ($placeholders)" to parameters
             }
+
             FilterOperator.HAS_ANY_KEYS, FilterOperator.HAS_ALL_KEYS -> {
                 val keys = values.map { it.toString() }.toTypedArray()
                 "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to keys)
             }
+
             else -> throw IllegalArgumentException("Unsupported list operator: ${filter.operator}")
         }
     }
-    
-    private fun buildJsonOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+
+    private fun buildJsonOperatorCondition(
+        filter: FilterDto,
+        paramKey: String,
+        operator: String
+    ): Pair<String, Map<String, Any>> {
         val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
         val serializedValue = objectMapper.writeValueAsString(filter.value)
         return "$jsonPathChain $operator cast(:$paramKey as jsonb)" to mapOf(paramKey to serializedValue)
     }
-    
-    private fun buildDataRootOperatorCondition(filter: FilterDto, paramKey: String, operator: String): Pair<String, Map<String, Any>> {
+
+    private fun buildDataRootOperatorCondition(
+        filter: FilterDto,
+        paramKey: String,
+        operator: String
+    ): Pair<String, Map<String, Any>> {
         return "data $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
     }
 
@@ -385,7 +453,7 @@ class DataRepositoryImpl : DataRepository {
             ?: throw IllegalStateException("No tenant in context")
         val applicationId = CurrentUser.getApplicationId()
             ?: throw IllegalStateException("No application in context")
-        
+
         return AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
@@ -400,7 +468,7 @@ class DataRepositoryImpl : DataRepository {
             ?: throw IllegalStateException("No tenant in context")
         val applicationId = CurrentUser.getApplicationId()
             ?: throw IllegalStateException("No application in context")
-        
+
         val query = AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)

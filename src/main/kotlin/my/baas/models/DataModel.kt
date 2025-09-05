@@ -22,7 +22,7 @@ class DataModel(
 
     var versionName: String
 
-) : BaseTenantModel() {
+) : BaseAppModel() {
 
     @JsonIgnore
     fun loadSchema(): SchemaModel {

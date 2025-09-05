@@ -1,5 +1,6 @@
 package my.baas.models
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import io.ebean.annotation.Index
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.MappedSuperclass
@@ -12,6 +13,7 @@ abstract class BaseAppModel : BaseTenantModel() {
     
     @ManyToOne
     @Index
+    @JsonIgnore
     lateinit var application: ApplicationModel
     
     @PrePersist
