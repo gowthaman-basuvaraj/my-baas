@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+
+# Build artifacts
+build
+.gradle
+
+# Logs
+logs
+*.log
+
+# Node modules (will be installed in container)
+oauth2-mock-server/node_modules
+
+# OS files
+.DS_Store
+Thumbs.db

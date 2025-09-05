@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: mybaas
+      POSTGRES_USER: mybaas
+      POSTGRES_PASSWORD: mybaas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mybaas -d mybaas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mybaas:
+    build: .
+    ports:
+      - "8081:8081"  # Main application
+      - "8080:8080"  # OAuth2 mock server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/mybaas
+      - DATABASE_USERNAME=mybaas
+      - DATABASE_PASSWORD=mybaas
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  postgres_data:
