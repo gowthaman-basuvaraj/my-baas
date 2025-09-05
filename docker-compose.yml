@@ -1,18 +1,16 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:15
+    image: postgres:17
     environment:
-      POSTGRES_DB: mybaas
-      POSTGRES_USER: mybaas
-      POSTGRES_PASSWORD: mybaas
+      POSTGRES_DB: ${DATABASE_NAME:-mybaas}
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mybaas -d mybaas"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-postgres} -d ${DATABASE_NAME:-mybaas}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,9 +24,10 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      - DATABASE_URL=jdbc:postgresql://postgres:5432/mybaas
-      - DATABASE_USERNAME=mybaas
-      - DATABASE_PASSWORD=mybaas
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/${DATABASE_NAME:-mybaas}
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-postgres}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-postgres}
+      - DATABASE_NAME=${DATABASE_NAME:-mybaas}
     volumes:
       - ./logs:/app/logs
 

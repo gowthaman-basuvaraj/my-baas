@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm globally
@@ -42,7 +43,6 @@ RUN pnpm install
 WORKDIR /app
 COPY api-tests/ ./api-tests/
 COPY api-tests.http .
-COPY http-client.private.env.json .
 COPY app.properties .
 
 # Download and install IntelliJ HTTP client
@@ -56,6 +56,6 @@ RUN curl -fsSL https://jb.gg/ijhttp/latest -o ijhttp.zip \
 COPY startup.sh /app/startup.sh
 RUN chmod +x /app/startup.sh
 
-EXPOSE 8080 8081
+EXPOSE 7070 7070
 
 CMD ["/app/startup.sh"]

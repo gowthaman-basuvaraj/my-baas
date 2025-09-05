@@ -1,4 +1,5 @@
 import {OAuth2Server} from 'oauth2-mock-server';
+import {writeFileSync} from 'fs';
 // ...or in CommonJS style:
 // const { OAuth2Server } = require('oauth2-mock-server');
 
@@ -22,5 +23,13 @@ let token = await server.issuer.buildToken({
     expiresIn: 30 * 24 * 2600
 });
 
-console.log('JWKS URL:', `${server.issuer.url}/.well-known/openid-configuration`)
+console.log('OpenId Config URL:', `${server.issuer.url}/.well-known/openid-configuration`)
 console.log('Token:', token);
+writeFileSync('http-client.private.env.json', JSON.stringify({
+    "dev": {
+        "baseUrl": "http://127.0.0.1:7070",
+        "tenantHost": "127.0.0.1",
+        "authToken": `Bearer ${token}`,
+    }
+
+}, null, 2));
