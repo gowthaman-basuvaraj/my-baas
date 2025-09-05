@@ -405,10 +405,7 @@ Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
-{
-  "name": "Test User",
-  "email": "test@example.com",
-}
+< ./input-invalid.json
 
 ###
 
