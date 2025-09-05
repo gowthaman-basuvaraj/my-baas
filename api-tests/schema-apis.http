@@ -1,0 +1,335 @@
+### Schema Management API Tests for MyBaaS
+### ============================================
+### Schema CRUD operations within application scope
+### Each application can define and manage its own schemas
+### ============================================
+
+### Create a new schema for ecommerce-app
+POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "users",
+  "versionName": "v1",
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "email": {
+        "type": "string",
+        "format": "email"
+      },
+      "age": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "address": {
+        "type": "object",
+        "properties": {
+          "street": { "type": "string" },
+          "city": { "type": "string" },
+          "country": { "type": "string" }
+        }
+      },
+      "tags": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["name", "email"]
+  },
+  "uniqueIdentifierFormatter": "{email}-{timestamp}",
+  "indexedJsonPaths": [
+    "name",
+    "email", 
+    "age",
+    "address.city",
+    "tags[*]"
+  ],
+  "lifecycleScripts": {
+    "BEFORE_SAVE": "console.log('Before save: ' + JSON.stringify(data));",
+    "AFTER_SAVE": "console.log('After save: ' + uniqueIdentifier);",
+    "AFTER_LOAD": "console.log('Data loaded');",
+    "BEFORE_DELETE": "console.log('About to delete: ' + uniqueIdentifier);",
+    "AFTER_DELETE": "console.log('Deleted: ' + uniqueIdentifier);"
+  },
+  "isValidationEnabled": true
+}
+
+###
+
+### Create schema v2 for migration testing
+POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "users",
+  "versionName": "v2",
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "firstName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "lastName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "email": {
+        "type": "string",
+        "format": "email"
+      },
+      "age": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "address": {
+        "type": "object",
+        "properties": {
+          "street": { "type": "string" },
+          "city": { "type": "string" },
+          "country": { "type": "string" },
+          "postalCode": { "type": "string" }
+        }
+      },
+      "tags": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["firstName", "lastName", "email"]
+  },
+  "uniqueIdentifierFormatter": "{email}-{timestamp}",
+  "indexedJsonPaths": [
+    "firstName",
+    "lastName",
+    "email",
+    "age",
+    "address.city",
+    "address.postalCode",
+    "tags[*]"
+  ],
+  "lifecycleScripts": {
+    "MIGRATE_VERSION": "// Split name into firstName and lastName\nif (oldVersion === 'v1' && newVersion === 'v2') {\n  var nameParts = (data.name || '').split(' ');\n  data.firstName = nameParts[0] || '';\n  data.lastName = nameParts.slice(1).join(' ') || '';\n  delete data.name;\n}\nreturn data;",
+    "BEFORE_SAVE": "console.log('Before save v2: ' + JSON.stringify(data));",
+    "AFTER_SAVE": "console.log('After save v2: ' + uniqueIdentifier);"
+  },
+  "isValidationEnabled": true
+}
+
+###
+
+### Create schema for analytics-app
+POST {{baseUrl}}/api/applications/analytics-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "events",
+  "versionName": "v1",
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "eventType": {
+        "type": "string",
+        "enum": ["page_view", "click", "purchase", "signup"]
+      },
+      "userId": {
+        "type": "string"
+      },
+      "sessionId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "properties": {
+        "type": "object"
+      }
+    },
+    "required": ["eventType", "timestamp"]
+  },
+  "uniqueIdentifierFormatter": "{userId}-{sessionId}-{timestamp}",
+  "indexedJsonPaths": [
+    "eventType",
+    "userId",
+    "timestamp"
+  ],
+  "isValidationEnabled": true
+}
+
+###
+
+### Create products schema for ecommerce-app
+POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "products",
+  "versionName": "v1",
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": {
+        "type": "string"
+      },
+      "price": {
+        "type": "number",
+        "minimum": 0
+      },
+      "category": {
+        "type": "string"
+      },
+      "inStock": {
+        "type": "boolean"
+      },
+      "tags": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["name", "price"]
+  },
+  "uniqueIdentifierFormatter": "{name}-{category}",
+  "indexedJsonPaths": [
+    "name",
+    "category",
+    "price",
+    "inStock"
+  ],
+  "isValidationEnabled": true
+}
+
+###
+
+### Get all schemas for ecommerce-app
+GET {{baseUrl}}/api/applications/ecommerce-app/schemas
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Get all schemas for analytics-app
+GET {{baseUrl}}/api/applications/analytics-app/schemas
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Get schema by ID
+# Replace {id} with actual schema ID from create response
+GET {{baseUrl}}/api/applications/ecommerce-app/schemas/1
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Update schema
+# Replace {id} with actual schema ID
+PUT {{baseUrl}}/api/applications/ecommerce-app/schemas/1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "users",
+  "versionName": "v1_updated",
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 100
+      },
+      "email": {
+        "type": "string",
+        "format": "email"
+      }
+    },
+    "required": ["name", "email"]
+  },
+  "uniqueIdentifierFormatter": "{email}",
+  "indexedJsonPaths": [
+    "name",
+    "email"
+  ],
+  "isValidationEnabled": true
+}
+
+###
+
+### Delete schema
+# Replace {id} with actual schema ID
+DELETE {{baseUrl}}/api/applications/ecommerce-app/schemas/1
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Delete schema with table drop
+# Replace {id} with actual schema ID
+DELETE {{baseUrl}}/api/applications/ecommerce-app/schemas/1?dropTable=true
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Create schema with validation disabled
+POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "flexible_data",
+  "versionName": "v1",
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object"
+  },
+  "uniqueIdentifierFormatter": "{id}-{timestamp}",
+  "indexedJsonPaths": [],
+  "isValidationEnabled": false
+}
+
+###
+
+### ============================================
+### Schema Validation Tests
+### ============================================
+
+### Get JSON schema for entity and version
+GET {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/schema
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Get JSON schema for analytics events
+GET {{baseUrl}}/api/applications/analytics-app/data/events/v1/schema
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###

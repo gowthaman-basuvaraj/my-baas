@@ -1,0 +1,120 @@
+### Admin API Tests for MyBaaS
+### ============================================
+### Administrative operations requiring admin tokens
+### Tenant management, system configuration, etc.
+### ============================================
+
+### Create a new tenant
+POST {{baseUrl}}/admin/tenants
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "name": "Acme Corporation",
+  "domain": "acme.example.com",
+  "isActive": true,
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"]
+}
+
+###
+
+### Create another tenant
+POST {{baseUrl}}/admin/tenants
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "name": "Beta Company",
+  "domain": "beta.example.com",
+  "isActive": true
+}
+
+###
+
+### Create another tenant with JWKS config
+POST {{baseUrl}}/admin/tenants
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "name": "Theta Company",
+  "domain": "theta.example.com",
+  "isActive": true,
+  "allowedIps": ["127.0.0.1/32", "10.0.0.0/8"],
+  "config": {
+    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
+  }
+}
+
+###
+
+### Get all tenants with pagination
+GET {{baseUrl}}/admin/tenants?page=1&pageSize=10
+Authorization: {{authToken}}
+
+###
+
+### Get tenant by ID
+# Replace {id} with actual tenant ID from create response
+GET {{baseUrl}}/admin/tenants/1
+Authorization: {{authToken}}
+
+###
+
+### Update tenant
+# Replace {id} with actual tenant ID
+PUT {{baseUrl}}/admin/tenants/1
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "name": "Acme Corporation Updated",
+  "domain": "acme.example.com",
+  "isActive": true,
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12"]
+}
+
+###
+
+### Activate tenant
+# Replace {id} with actual tenant ID
+POST {{baseUrl}}/admin/tenants/1/activate
+Authorization: {{authToken}}
+
+###
+
+### Deactivate tenant
+# Replace {id} with actual tenant ID
+POST {{baseUrl}}/admin/tenants/1/deactivate
+Authorization: {{authToken}}
+
+###
+
+### Delete tenant
+# Replace {id} with actual tenant ID
+DELETE {{baseUrl}}/admin/tenants/1
+Authorization: {{authToken}}
+
+###
+
+### ============================================
+### Admin Error Testing
+### ============================================
+
+### Test unauthorized admin access
+GET {{baseUrl}}/admin/tenants
+X-Admin-Token: wrong-token
+
+###
+
+### Test creating tenant with invalid data
+POST {{baseUrl}}/admin/tenants
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "name": "",
+  "domain": "invalid-domain"
+}
+
+###

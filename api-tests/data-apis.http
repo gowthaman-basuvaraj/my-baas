@@ -1,0 +1,431 @@
+### Data Management API Tests for MyBaaS
+### ============================================
+### Data CRUD operations within application and schema scope
+### Each application manages its own data separately
+### ============================================
+
+### ============================================
+### SCHEMA VALIDATION TESTS
+### ============================================
+
+### Validate payload against schema - Valid payload
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/validate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "test@example.com",
+  "age": 25,
+  "address": {
+    "street": "123 Test St",
+    "city": "Test City",
+    "country": "Test Country"
+  },
+  "tags": ["test", "validation"]
+}
+
+###
+
+### Validate payload against schema - Invalid payload (format violation)
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/validate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "invalid-email",
+  "age": "not-a-number"
+}
+
+###
+
+### Validate payload against schema - Invalid payload (minimum value violation)
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/validate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "",
+  "email": "test@example.com",
+  "age": -5
+}
+
+###
+
+### Validate against v2 schema
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v2/validate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@example.com",
+  "age": 30,
+  "address": {
+    "street": "123 Main St",
+    "city": "New York",
+    "country": "USA",
+    "postalCode": "10001"
+  }
+}
+
+###
+
+### ============================================
+### ECOMMERCE APP - USER DATA MANAGEMENT
+### ============================================
+
+### Create a user data model
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "age": 30,
+  "address": {
+    "street": "123 Main St",
+    "city": "New York",
+    "country": "USA"
+  },
+  "tags": ["developer", "javascript", "backend"]
+}
+
+###
+
+### Create another user for testing
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Jane Smith",
+  "email": "jane.smith@example.com",
+  "age": 25,
+  "address": {
+    "street": "456 Oak Ave",
+    "city": "San Francisco",
+    "country": "USA"
+  },
+  "tags": ["designer", "ui/ux", "frontend"]
+}
+
+###
+
+### Create product data
+POST {{baseUrl}}/api/applications/ecommerce-app/data/products/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Wireless Headphones",
+  "description": "High-quality wireless headphones with noise cancellation",
+  "price": 199.99,
+  "category": "electronics",
+  "inStock": true,
+  "tags": ["audio", "wireless", "electronics"]
+}
+
+###
+
+### Get all users for ecommerce-app
+GET {{baseUrl}}/api/applications/ecommerce-app/data/users
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Get all products for ecommerce-app
+GET {{baseUrl}}/api/applications/ecommerce-app/data/products
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Get user by unique identifier
+# Replace {uniqueIdentifier} with actual value from create response
+GET {{baseUrl}}/api/applications/ecommerce-app/data/users/john.doe@example.com-1234567890
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Update user data model
+# Replace {uniqueIdentifier} with actual value
+PUT {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/john.doe@example.com-1234567890
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "John Updated Doe",
+  "email": "john.doe@example.com",
+  "age": 31,
+  "address": {
+    "street": "789 New Street",
+    "city": "Boston",
+    "country": "USA"
+  },
+  "tags": ["developer", "javascript", "fullstack", "nodejs"]
+}
+
+###
+
+### Patch user data model (partial update)
+# Replace {uniqueIdentifier} with actual value
+PATCH {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/john.doe@example.com-1234567890
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "age": 32,
+  "address": {
+    "city": "Chicago"
+  },
+  "tags": ["developer", "python", "ai"]
+}
+
+###
+
+### ============================================
+### USER DATA SEARCH OPERATIONS
+### ============================================
+
+### Search users - Single filter (Greater Than)
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "age",
+      "operator": "GT",
+      "value": 25
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search users - Multiple filters (EQ and GE)
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "address.city",
+      "operator": "EQ",
+      "value": "New York"
+    },
+    {
+      "jsonPath": "age",
+      "operator": "GE",
+      "value": 30
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search users - String contains
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "name",
+      "operator": "CONTAINS",
+      "value": "Doe"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search users - Array operations
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "tags",
+      "operator": "ARRAY_CONTAINS",
+      "value": "developer"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### ============================================
+### ANALYTICS APP - EVENT DATA MANAGEMENT
+### ============================================
+
+### Create page view event
+POST {{baseUrl}}/api/applications/analytics-app/data/events/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "eventType": "page_view",
+  "userId": "user123",
+  "sessionId": "session456",
+  "timestamp": "2023-12-01T10:30:00Z",
+  "properties": {
+    "page": "/home",
+    "referrer": "https://google.com",
+    "userAgent": "Mozilla/5.0..."
+  }
+}
+
+###
+
+### Create purchase event
+POST {{baseUrl}}/api/applications/analytics-app/data/events/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "eventType": "purchase",
+  "userId": "user123",
+  "sessionId": "session456",
+  "timestamp": "2023-12-01T11:45:00Z",
+  "properties": {
+    "productId": "prod789",
+    "amount": 29.99,
+    "currency": "USD"
+  }
+}
+
+###
+
+### Create click event
+POST {{baseUrl}}/api/applications/analytics-app/data/events/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "eventType": "click",
+  "userId": "user456",
+  "sessionId": "session789",
+  "timestamp": "2023-12-01T12:15:00Z",
+  "properties": {
+    "element": "buy-button",
+    "page": "/product/123"
+  }
+}
+
+###
+
+### Get all events for analytics-app
+GET {{baseUrl}}/api/applications/analytics-app/data/events
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Search events by type
+POST {{baseUrl}}/api/applications/analytics-app/data/events/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "eventType",
+      "operator": "EQ",
+      "value": "purchase"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Search events by user
+POST {{baseUrl}}/api/applications/analytics-app/data/events/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "userId",
+      "operator": "EQ",
+      "value": "user123"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### ============================================
+### DATA MIGRATION AND LIFECYCLE
+### ============================================
+
+### Migrate user data model to v2
+# Replace {uniqueIdentifier} with actual value
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/john.doe@example.com-1234567890/migrate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "destinationVersion": "v2"
+}
+
+###
+
+### Delete user data model
+# Replace {uniqueIdentifier} with actual value
+DELETE {{baseUrl}}/api/applications/ecommerce-app/data/users/john.doe@example.com-1234567890
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Delete event data model
+# Replace {uniqueIdentifier} with actual value
+DELETE {{baseUrl}}/api/applications/analytics-app/data/events/user123-session456-2023-12-01T10:30:00Z
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###

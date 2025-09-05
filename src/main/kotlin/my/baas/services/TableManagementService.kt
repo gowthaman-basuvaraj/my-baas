@@ -13,7 +13,8 @@ object TableManagementService {
 
     fun createDataModelTable(schema: SchemaModel) {
         val tenantId = CurrentUser.getTenant()?.id ?: throw IllegalStateException("No tenant in context")
-        val tableName = schema.generateTableName(tenantId)
+        val applicationId = schema.application.id ?: throw IllegalStateException("No application id for schema")
+        val tableName = schema.generateTableName(tenantId, applicationId)
 
         try {
             val sql = """
@@ -59,8 +60,8 @@ object TableManagementService {
         }
     }
 
-    fun dropDataModelTable(tenantId: Long, entityName: String) {
-        val tableName = SchemaModel.generateTableName(tenantId, entityName)
+    fun dropDataModelTable(tenantId: Long, applicationId: Long, entityName: String) {
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
 
         try {
             val sql = "DROP TABLE IF EXISTS $tableName CASCADE"
@@ -73,7 +74,8 @@ object TableManagementService {
     }
 
     fun updateIndexes(schema: SchemaModel, oldIndexedPaths: List<String>, newIndexedPaths: List<String>, tenantId: Long) {
-        val tableName = schema.generateTableName(tenantId)
+        val applicationId = schema.application.id ?: throw IllegalStateException("No application id for schema")
+        val tableName = schema.generateTableName(tenantId, applicationId)
 
         // Calculate differences
         val removedPaths = oldIndexedPaths - newIndexedPaths.toSet()

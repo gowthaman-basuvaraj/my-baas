@@ -1,0 +1,457 @@
+### Error Testing API Tests for MyBaaS
+### ============================================
+### Testing various error scenarios and edge cases
+### 404 errors, validation errors, unauthorized access, etc.
+### ============================================
+
+### ============================================
+### AUTHENTICATION AND AUTHORIZATION ERRORS
+### ============================================
+
+### Test unauthorized access - missing token
+GET {{baseUrl}}/api/applications
+Host: {{tenantHost}}
+
+###
+
+### Test unauthorized access - invalid token
+GET {{baseUrl}}/api/applications
+Authorization: Bearer invalid-token-123
+Host: {{tenantHost}}
+
+###
+
+### Test admin endpoint with regular token
+GET {{baseUrl}}/admin/tenants
+Authorization: {{authToken}}
+
+###
+
+### Test unauthorized admin access - wrong token
+GET {{baseUrl}}/admin/tenants
+X-Admin-Token: wrong-token
+
+###
+
+### ============================================
+### APPLICATION ERRORS
+### ============================================
+
+### Test creating application with duplicate name
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "ecommerce-app",
+  "description": "Duplicate application name",
+  "isActive": true
+}
+
+###
+
+### Test creating application with empty name
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "",
+  "description": "Empty application name",
+  "isActive": true
+}
+
+###
+
+### Test getting non-existent application
+GET {{baseUrl}}/api/applications/99999
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Test updating non-existent application
+PUT {{baseUrl}}/api/applications/99999
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "non-existent",
+  "description": "This should fail",
+  "isActive": true
+}
+
+###
+
+### ============================================
+### SCHEMA ERRORS
+### ============================================
+
+### Test creating schema for non-existent application
+POST {{baseUrl}}/api/applications/non-existent-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "test",
+  "versionName": "v1",
+  "jsonSchema": {
+    "type": "object"
+  },
+  "uniqueIdentifierFormatter": "{id}",
+  "isValidationEnabled": true
+}
+
+###
+
+### Test creating schema with invalid JSON schema
+POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "invalid-schema",
+  "versionName": "v1",
+  "jsonSchema": {
+    "type": "invalid-type"
+  },
+  "uniqueIdentifierFormatter": "{id}",
+  "isValidationEnabled": true
+}
+
+###
+
+### Test creating schema with duplicate entity and version
+POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "entityName": "users",
+  "versionName": "v1",
+  "jsonSchema": {
+    "type": "object",
+    "properties": {
+      "name": {"type": "string"}
+    }
+  },
+  "uniqueIdentifierFormatter": "{name}",
+  "isValidationEnabled": true
+}
+
+###
+
+### Test getting non-existent schema
+GET {{baseUrl}}/api/applications/ecommerce-app/schemas/99999
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### ============================================
+### DATA VALIDATION ERRORS
+### ============================================
+
+### Test 404 - Entity not found
+GET {{baseUrl}}/api/applications/ecommerce-app/data/nonexistent
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Test 404 - Version not found
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v999
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "test@example.com"
+}
+
+###
+
+### Test 404 - Application not found in data endpoint
+POST {{baseUrl}}/api/applications/non-existent-app/data/users/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "test@example.com"
+}
+
+###
+
+### Test 400 - Invalid JSON schema validation
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Missing Required Email Field"
+}
+
+###
+
+### Test 400 - Invalid email format
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "invalid-email-format"
+}
+
+###
+
+### Test 400 - Invalid age (negative number)
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "test@example.com",
+  "age": -5
+}
+
+###
+
+### Test 404 - Data model not found
+GET {{baseUrl}}/api/applications/ecommerce-app/data/users/nonexistent-id-12345
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Test updating non-existent data model
+PUT {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/nonexistent-id-12345
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Updated Name",
+  "email": "updated@example.com"
+}
+
+###
+
+### ============================================
+### SEARCH AND FILTER ERRORS
+### ============================================
+
+### Test search with invalid JSON path
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "invalid..path[",
+      "operator": "EQ",
+      "value": "test"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Test search with invalid operator
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [
+    {
+      "jsonPath": "name",
+      "operator": "INVALID_OPERATOR",
+      "value": "test"
+    }
+  ],
+  "pageNo": 1,
+  "pageSize": 10
+}
+
+###
+
+### Test search with invalid pagination
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/search
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "filters": [],
+  "pageNo": -1,
+  "pageSize": 0
+}
+
+###
+
+### ============================================
+### MIGRATION ERRORS
+### ============================================
+
+### Test migration to non-existent version
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/john.doe@example.com-1234567890/migrate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "destinationVersion": "v999"
+}
+
+###
+
+### Test migration of non-existent data model
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/nonexistent-id/migrate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "destinationVersion": "v2"
+}
+
+###
+
+### Test migration with invalid destination version format
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/john.doe@example.com-1234567890/migrate
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "destinationVersion": ""
+}
+
+###
+
+### ============================================
+### ANALYTICS APP ERRORS
+### ============================================
+
+### Test creating event with invalid event type
+POST {{baseUrl}}/api/applications/analytics-app/data/events/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "eventType": "invalid_event_type",
+  "userId": "user123",
+  "timestamp": "2023-12-01T10:30:00Z"
+}
+
+###
+
+### Test creating event with invalid timestamp format
+POST {{baseUrl}}/api/applications/analytics-app/data/events/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "eventType": "page_view",
+  "userId": "user123",
+  "timestamp": "invalid-timestamp"
+}
+
+###
+
+### Test creating event without required fields
+POST {{baseUrl}}/api/applications/analytics-app/data/events/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "userId": "user123",
+  "properties": {
+    "page": "/home"
+  }
+}
+
+###
+
+### ============================================
+### MALFORMED REQUEST ERRORS
+### ============================================
+
+### Test with malformed JSON
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "test@example.com",
+}
+
+###
+
+### Test with missing content-type header
+POST {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "name": "Test User",
+  "email": "test@example.com"
+}
+
+###
+
+### Test with wrong HTTP method
+GET {{baseUrl}}/api/applications/ecommerce-app/data/users/v1
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### ============================================
+### TENANT ISOLATION ERRORS
+### ============================================
+
+### Test accessing other tenant's data (should fail with proper tenant isolation)
+GET {{baseUrl}}/api/applications/ecommerce-app/schemas
+Authorization: {{authToken}}
+Host: other-tenant.example.com
+
+###
+
+### Test creating application with wrong tenant host
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: wrong-tenant.example.com
+
+{
+  "applicationName": "cross-tenant-test",
+  "description": "This should fail with tenant isolation",
+  "isActive": true
+}
+
+###

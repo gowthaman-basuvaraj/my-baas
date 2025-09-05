@@ -8,6 +8,7 @@ import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.dto.SchemaModelCreateDto
 import my.baas.dto.SchemaModelViewDto
+import my.baas.models.ApplicationModel
 import my.baas.models.SchemaModel
 import my.baas.services.TableManagementService
 import my.baas.services.TenantLimitService
@@ -17,8 +18,11 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Create a new schema",
         operationId = "createSchema",
-        path = "/api/schemas",
+        path = "/api/applications/{applicationName}/schemas",
         methods = [HttpMethod.POST],
+        pathParams = [
+            OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true)
+        ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = SchemaModelCreateDto::class)]),
         responses = [
             OpenApiResponse("201", description = "Schema created successfully"),
@@ -29,9 +33,21 @@ object SchemaController : CrudHandler {
     override fun create(ctx: Context) {
         // Validate tenant limits before creating schema
         TenantLimitService.validateSchemaCreation()
+        
+        // Get application from path
+        val applicationName = ctx.pathParam("applicationName")
+        val application = AppContext.db.find(ApplicationModel::class.java)
+            .where()
+            .eq("applicationName", applicationName)
+            .findOne()
+            ?: throw NotFoundResponse("Application not found")
+        
+        // Set application context
+        CurrentUser.setApplicationContext(application.id, application.applicationName)
 
         val schemaCreateDto = ctx.bodyAsClass(SchemaModelCreateDto::class.java)
         val schema = schemaCreateDto.toModel()
+        schema.application = application
         schema.save()
 
         // Create the corresponding table for this schema
@@ -43,9 +59,10 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Get a schema by ID",
         operationId = "getSchema",
-        path = "/api/schemas/{id}",
+        path = "/api/applications/{applicationName}/schemas/{id}",
         methods = [HttpMethod.GET],
         pathParams = [
+            OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true),
             OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
         responses = [
@@ -64,15 +81,32 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Get all schemas",
         operationId = "getAllSchemas",
-        path = "/api/schemas",
+        path = "/api/applications/{applicationName}/schemas",
         methods = [HttpMethod.GET],
+        pathParams = [
+            OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true)
+        ],
         responses = [
             OpenApiResponse("200", description = "Schemas retrieved successfully")
         ],
         tags = ["Schemas"]
     )
     override fun getAll(ctx: Context) {
-        val schemas = AppContext.db.find(SchemaModel::class.java).findList()
+        // Get application from path
+        val applicationName = ctx.pathParam("applicationName")
+        val application = AppContext.db.find(ApplicationModel::class.java)
+            .where()
+            .eq("applicationName", applicationName)
+            .findOne()
+            ?: throw NotFoundResponse("Application not found")
+        
+        // Set application context
+        CurrentUser.setApplicationContext(application.id, application.applicationName)
+        
+        val schemas = AppContext.db.find(SchemaModel::class.java)
+            .where()
+            .eq("application_id", application.id)
+            .findList()
         val schemaDtos = schemas.map { SchemaModelViewDto.fromModel(it) }
         ctx.json(schemaDtos)
     }
@@ -80,9 +114,10 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Update a schema",
         operationId = "updateSchema",
-        path = "/api/schemas/{id}",
+        path = "/api/applications/{applicationName}/schemas/{id}",
         methods = [HttpMethod.PUT],
         pathParams = [
+            OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true),
             OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = SchemaModelCreateDto::class)]),
@@ -123,9 +158,10 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Delete a schema",
         operationId = "deleteSchema",
-        path = "/api/schemas/{id}",
+        path = "/api/applications/{applicationName}/schemas/{id}",
         methods = [HttpMethod.DELETE],
         pathParams = [
+            OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true),
             OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
         queryParams = [
@@ -150,7 +186,8 @@ object SchemaController : CrudHandler {
         val dropTable = ctx.queryParam("dropTable")?.toBoolean() ?: false
         if (dropTable) {
             schema.tenantId.let { tenantId ->
-                TableManagementService.dropDataModelTable(tenantId, schema.entityName)
+                val applicationId = schema.application.id
+                TableManagementService.dropDataModelTable(tenantId, applicationId, schema.entityName)
             }
         }
 

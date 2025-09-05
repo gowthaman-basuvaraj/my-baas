@@ -53,7 +53,8 @@ class DataRepositoryImpl : DataRepository {
 
     override fun save(dataModel: DataModel): DataModel {
         val tenantId = CurrentUser.getTenant()?.id ?: throw BadRequestResponse("No tenant in context")
-        val tableName = SchemaModel.generateTableName(tenantId, dataModel.entityName)
+        val applicationId = CurrentUser.getApplicationId() ?: throw BadRequestResponse("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, dataModel.entityName)
 
         val dataJson = objectMapper.writeValueAsString(dataModel.data)
         val now = Timestamp.from(Instant.now())
@@ -110,7 +111,8 @@ class DataRepositoryImpl : DataRepository {
     ): PagedList<DataModel> {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
-        val tableName = SchemaModel.generateTableName(tenantId, entityName)
+        val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
 
         val sql = if (versionName != null) {
             """
@@ -145,7 +147,8 @@ class DataRepositoryImpl : DataRepository {
 
     override fun update(dataModel: DataModel): DataModel {
         val tenantId = dataModel.tenantId
-        val tableName = SchemaModel.generateTableName(tenantId, dataModel.entityName)
+        val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, dataModel.entityName)
 
         val dataJson = objectMapper.writeValueAsString(dataModel.data)
         val now = Timestamp.from(Instant.now())
@@ -192,7 +195,8 @@ class DataRepositoryImpl : DataRepository {
     override fun findByUniqueIdentifier(entityName: String, uniqueIdentifier: String): DataModel? {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
-        val tableName = SchemaModel.generateTableName(tenantId, entityName)
+        val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
 
         val sql = """
             SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
@@ -217,7 +221,8 @@ class DataRepositoryImpl : DataRepository {
 
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
-        val tableName = SchemaModel.generateTableName(tenantId, entityName)
+        val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
 
         val placeholders = uniqueIdentifiers.joinToString(",") { ":uid${uniqueIdentifiers.indexOf(it)}" }
         val sql = """
@@ -245,7 +250,8 @@ class DataRepositoryImpl : DataRepository {
     override fun deleteByUniqueIdentifier(entityName: String, uniqueIdentifier: String): Boolean {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
-        val tableName = SchemaModel.generateTableName(tenantId, entityName)
+        val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
         val sql = """
                 DELETE FROM $tableName 
                 WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId
@@ -266,7 +272,8 @@ class DataRepositoryImpl : DataRepository {
     ): PagedList<DataModel> {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
-        val tableName = SchemaModel.generateTableName(tenantId, entityName)
+        val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
+        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
 
         if (filters.isEmpty()) {
             return findAllByEntityName(entityName, null, pageNo, pageSize)
@@ -373,23 +380,29 @@ class DataRepositoryImpl : DataRepository {
     override fun findSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel? {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
+        val applicationId = CurrentUser.getApplicationId()
+            ?: throw IllegalStateException("No application in context")
         
         return AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
             .eq("versionName", versionName)
             .eq("tenantId", tenantId)
+            .eq("application_id", applicationId)
             .findOne()
     }
 
     override fun validateSchemaExistsForEntityAndVersion(entityName: String, versionName: String?) {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
+        val applicationId = CurrentUser.getApplicationId()
+            ?: throw IllegalStateException("No application in context")
         
         val query = AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
             .eq("tenantId", tenantId)
+            .eq("application_id", applicationId)
 
         if (versionName != null) {
             query.eq("versionName", versionName)

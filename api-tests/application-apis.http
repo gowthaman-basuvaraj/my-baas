@@ -1,0 +1,139 @@
+### Application Management API Tests for MyBaaS
+### ============================================
+### Application CRUD operations within tenant scope
+### Each tenant can manage their own applications
+### ============================================
+
+### Create a new application - ecommerce
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "ecommerce-app",
+  "description": "Main e-commerce application",
+  "isActive": true
+}
+
+###
+
+### Create another application - analytics
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "analytics-app",
+  "description": "Analytics and reporting application",
+  "isActive": true
+}
+
+###
+
+### Create third application - cms
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "cms-app",
+  "description": "Content management system",
+  "isActive": true
+}
+
+###
+
+### Get all applications
+GET {{baseUrl}}/api/applications
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Get application by ID
+# Replace {id} with actual application ID from create response
+GET {{baseUrl}}/api/applications/1
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### Update application
+# Replace {id} with actual application ID
+PUT {{baseUrl}}/api/applications/1
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "ecommerce-app-updated",
+  "description": "Updated e-commerce application description",
+  "isActive": true
+}
+
+###
+
+### Update application status to inactive
+# Replace {id} with actual application ID
+PUT {{baseUrl}}/api/applications/2
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "analytics-app",
+  "description": "Analytics and reporting application",
+  "isActive": false
+}
+
+###
+
+### Delete application
+# Replace {id} with actual application ID
+DELETE {{baseUrl}}/api/applications/3
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###
+
+### ============================================
+### Application Error Testing
+### ============================================
+
+### Test creating application with duplicate name
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "ecommerce-app",
+  "description": "Duplicate application name",
+  "isActive": true
+}
+
+###
+
+### Test creating application with invalid name
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+{
+  "applicationName": "",
+  "description": "Empty application name",
+  "isActive": true
+}
+
+###
+
+### Test getting non-existent application
+GET {{baseUrl}}/api/applications/99999
+Authorization: {{authToken}}
+Host: {{tenantHost}}
+
+###

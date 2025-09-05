@@ -1,1006 +1,161 @@
-### API Testing File for MyBaaS
+### MyBaaS API Testing Suite
 ### ============================================
-### ADMIN TENANT MANAGEMENT APIS
-### ============================================
-
-### Create a new tenant
-POST {{baseUrl}}/admin/tenants
-Content-Type: application/json
-Authorization: {{authToken}}
-
-{
-  "name": "Acme Corporation",
-  "domain": "acme.example.com",
-  "isActive": true,
-  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"]
-}
-
+### 
+### This is the main index file for MyBaaS API tests.
+### Individual test files are organized by functionality:
 ###
+### 🏗️ Architecture Overview:
+### - Applications: /api/applications (CRUD)
+### - Schemas: /api/applications/{applicationName}/schemas (application-scoped)
+### - Data: /api/applications/{applicationName}/data/{entityName} (application-scoped)
+###
+### 🔐 Multi-tenancy Support:
+### - Each tenant has isolated applications, schemas, and data
+### - Application names must be unique within a tenant
+### - Data tables are prefixed with tenantId and applicationId
+###
+### 📁 Test File Organization:
+### ============================================
 
-### Create another tenant
+### 👨‍💼 ADMIN API TESTS
+### File: ./api-tests/admin-apis.http
+### - Tenant CRUD operations
+### - Admin-only endpoints
+### - System configuration
+
+### 🏢 APPLICATION MANAGEMENT TESTS  
+### File: ./api-tests/application-apis.http
+### - Application CRUD within tenant scope
+### - Multi-application scenarios
+### - Application lifecycle management
+
+### 📊 SCHEMA MANAGEMENT TESTS
+### File: ./api-tests/schema-apis.http  
+### - Schema definition and versioning
+### - JSON Schema validation
+### - Lifecycle scripts and indexing
+### - Cross-application schema isolation
+
+### 💾 DATA MANAGEMENT TESTS
+### File: ./api-tests/data-apis.http
+### - Data CRUD operations
+### - Search and filtering
+### - Data validation
+### - Multi-application data scenarios
+
+### ❌ ERROR TESTING
+### File: ./api-tests/error-testing-apis.http
+### - Authentication and authorization errors
+### - Validation errors
+### - 404 and other HTTP errors
+### - Edge cases and malformed requests
+
+### ============================================
+### QUICK START EXAMPLES
+### ============================================
+### Use these for basic testing workflow:
+
+### 1. Create Tenant (Admin)
 POST {{baseUrl}}/admin/tenants
 Content-Type: application/json
 Authorization: {{authToken}}
 
 {
-  "name": "Beta Company",
-  "domain": "beta.example.com",
+  "name": "Test Company",
+  "domain": "test.example.com",
   "isActive": true
 }
 
+###
 
-### Create another tenant
-POST {{baseUrl}}/admin/tenants
+### 2. Create Application (Tenant-scoped)
+POST {{baseUrl}}/api/applications
 Content-Type: application/json
 Authorization: {{authToken}}
+Host: test.example.com
 
 {
-  "name": "Theta Company",
-  "domain": "theta.example.com",
-  "isActive": true,
-  "allowedIps": ["127.0.0.1/32", "10.0.0.0/8"],
-  "config": {
-    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
-  }
+  "applicationName": "test-app",
+  "description": "Test application",
+  "isActive": true
 }
 
 ###
 
-### Get all tenants with pagination
-GET {{baseUrl}}/admin/tenants?page=1&pageSize=10
-Authorization: {{authToken}}
-
-###
-
-### Get tenant by ID
-# Replace {id} with actual tenant ID from create response
-GET {{baseUrl}}/admin/tenants/1
-Authorization: {{authToken}}
-
-###
-
-### Update tenant
-# Replace {id} with actual tenant ID
-PUT {{baseUrl}}/admin/tenants/1
+### 3. Create Schema (Application-scoped)
+POST {{baseUrl}}/api/applications/test-app/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
-
-{
-  "name": "Acme Corporation Updated",
-  "domain": "acme.example.com",
-  "isActive": true,
-  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12"]
-}
-
-###
-
-### Activate tenant
-# Replace {id} with actual tenant ID
-POST {{baseUrl}}/admin/tenants/1/activate
-Authorization: {{authToken}}
-
-###
-
-### Deactivate tenant
-# Replace {id} with actual tenant ID
-POST {{baseUrl}}/admin/tenants/1/deactivate
-Authorization: {{authToken}}
-
-###
-
-### Update allowed IPs for tenant
-# Replace {id} with actual tenant ID
-PUT {{baseUrl}}/admin/tenants/1/allowed-ips
-Content-Type: application/json
-Authorization: {{authToken}}
-
-{
-  "allowedIps": ["192.168.0.0/16", "10.0.0.0/8"]
-}
-
-###
-
-### Get tenant statistics
-# Replace {id} with actual tenant ID
-GET {{baseUrl}}/admin/tenants/1/stats
-Authorization: {{authToken}}
-
-###
-
-### Delete tenant (will fail if tenant has data)
-# Replace {id} with actual tenant ID
-DELETE {{baseUrl}}/admin/tenants/999
-Authorization: {{authToken}}
-
-###
-
-### Test admin auth with JWT token (with admin role)
-GET {{baseUrl}}/admin/tenants
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbi11c2VyIiwicm9sZXMiOlsiYWRtaW4iXSwiaWF0IjoxNjE2MjM5MDIyfQ.admin-jwt-token
-
-###
-
-### Test unauthorized access (no token)
-GET {{baseUrl}}/admin/tenants
-
-###
-
-### Test unauthorized access (wrong token)
-GET {{baseUrl}}/admin/tenants
-X-Admin-Token: wrong-token
-
-###
-
-### ============================================
-### SCHEMA APIS
-### ============================================
-
-### Create a new schema
-POST {{baseUrl}}/api/schemas
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
+Host: test.example.com
 
 {
   "entityName": "users",
   "versionName": "v1",
   "jsonSchema": {
-    "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "name": {
-        "type": "string",
-        "minLength": 1
-      },
-      "email": {
-        "type": "string",
-        "format": "email"
-      },
-      "age": {
-        "type": "integer",
-        "minimum": 0
-      },
-      "address": {
-        "type": "object",
-        "properties": {
-          "street": { "type": "string" },
-          "city": { "type": "string" },
-          "country": { "type": "string" }
-        }
-      },
-      "tags": {
-        "type": "array",
-        "items": { "type": "string" }
-      }
-    },
-    "required": ["name", "email"]
-  },
-  "uniqueIdentifierFormatter": "{email}-{timestamp}",
-  "indexedJsonPaths": [
-    "name",
-    "email", 
-    "age",
-    "address.city",
-    "tags[*]"
-  ],
-  "lifecycleScripts": {
-    "BEFORE_SAVE": "console.log('Before save: ' + JSON.stringify(data));",
-    "AFTER_SAVE": "console.log('After save: ' + uniqueIdentifier);",
-    "AFTER_LOAD": "console.log('Data loaded');",
-    "BEFORE_DELETE": "console.log('About to delete: ' + uniqueIdentifier);",
-    "AFTER_DELETE": "console.log('Deleted: ' + uniqueIdentifier);"
-  },
-  "isValidationEnabled": true
-}
-
-###
-
-### Create schema v2 for migration testing
-POST {{baseUrl}}/api/schemas
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "entityName": "users",
-  "versionName": "v2",
-  "jsonSchema": {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "firstName": {
-        "type": "string",
-        "minLength": 1
-      },
-      "lastName": {
-        "type": "string",
-        "minLength": 1
-      },
-      "email": {
-        "type": "string",
-        "format": "email"
-      },
-      "age": {
-        "type": "integer",
-        "minimum": 0
-      },
-      "address": {
-        "type": "object",
-        "properties": {
-          "street": { "type": "string" },
-          "city": { "type": "string" },
-          "country": { "type": "string" },
-          "postalCode": { "type": "string" }
-        }
-      },
-      "tags": {
-        "type": "array",
-        "items": { "type": "string" }
-      }
-    },
-    "required": ["firstName", "lastName", "email"]
-  },
-  "uniqueIdentifierFormatter": "{email}-{timestamp}",
-  "indexedJsonPaths": [
-    "firstName",
-    "lastName",
-    "email",
-    "age",
-    "address.city",
-    "address.postalCode",
-    "tags[*]"
-  ],
-  "lifecycleScripts": {
-    "MIGRATE_VERSION": "// Split name into firstName and lastName\nif (oldVersion === 'v1' && newVersion === 'v2') {\n  var nameParts = (data.name || '').split(' ');\n  data.firstName = nameParts[0] || '';\n  data.lastName = nameParts.slice(1).join(' ') || '';\n  delete data.name;\n}\nreturn data;",
-    "BEFORE_SAVE": "console.log('Before save v2: ' + JSON.stringify(data));",
-    "AFTER_SAVE": "console.log('After save v2: ' + uniqueIdentifier);"
-  },
-  "isValidationEnabled": true
-}
-
-###
-
-### Get all schemas
-GET {{baseUrl}}/api/schemas
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### Get schema by ID
-# Replace {id} with actual schema ID from create response
-GET {{baseUrl}}/api/schemas/1
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### Update schema
-# Replace {id} with actual schema ID
-PUT {{baseUrl}}/api/schemas/1
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "entityName": "users",
-  "versionName": "v1_updated",
-  "jsonSchema": {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "name": {
-        "type": "string",
-        "minLength": 2,
-        "maxLength": 100
-      },
-      "email": {
-        "type": "string",
-        "format": "email"
-      }
+      "name": {"type": "string"},
+      "email": {"type": "string", "format": "email"}
     },
     "required": ["name", "email"]
   },
   "uniqueIdentifierFormatter": "{email}",
-  "indexedJsonPaths": [
-    "name",
-    "email"
-  ],
   "isValidationEnabled": true
 }
 
 ###
 
-### Delete schema
-# Replace {id} with actual schema ID
-DELETE {{baseUrl}}/api/schemas/1
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### ============================================
-### SCHEMA VALIDATION APIS
-### ============================================
-
-### Get JSON schema for entity and version
-GET {{baseUrl}}/api/data/users/v1/schema
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### Get JSON schema for v2
-GET {{baseUrl}}/api/data/users/v2/schema
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### Validate payload against schema - Valid payload
-POST {{baseUrl}}/api/data/users/v1/validate
+### 4. Create Data (Schema-scoped)
+POST {{baseUrl}}/api/applications/test-app/data/users/v1
 Content-Type: application/json
 Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "Test User",
-  "email": "test@example.com",
-  "age": 25,
-  "address": {
-    "street": "123 Test St",
-    "city": "Test City",
-    "country": "Test Country"
-  }
-}
-
-###
-
-### Validate payload against schema - Invalid payload (missing required field)
-POST {{baseUrl}}/api/data/users/v1/validate
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "Test User"
-}
-
-###
-
-### Validate payload against schema - Invalid payload (wrong type)
-POST {{baseUrl}}/api/data/users/v1/validate
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "Test User",
-  "email": "invalid-email",
-  "age": "not-a-number"
-}
-
-###
-
-### Validate payload against schema - Invalid payload (minimum value violation)
-POST {{baseUrl}}/api/data/users/v1/validate
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "",
-  "email": "test@example.com",
-  "age": -5
-}
-
-###
-
-### Validate against v2 schema
-POST {{baseUrl}}/api/data/users/v2/validate
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john.doe@example.com",
-  "age": 30,
-  "address": {
-    "street": "123 Main St",
-    "city": "New York",
-    "country": "USA",
-    "postalCode": "10001"
-  }
-}
-
-###
-
-### ============================================
-### DATA MODEL APIS
-### ============================================
-
-### Create a data model
-POST {{baseUrl}}/api/data/users/v1
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
+Host: test.example.com
 
 {
   "name": "John Doe",
-  "email": "john.doe@example.com",
-  "age": 30,
-  "address": {
-    "street": "123 Main St",
-    "city": "New York",
-    "country": "USA"
-  },
-  "tags": ["developer", "javascript", "backend"]
+  "email": "john@example.com"
 }
 
 ###
 
-### Create another data model for testing
-POST {{baseUrl}}/api/data/users/v1
-Content-Type: application/json
+### 5. Query Data
+GET {{baseUrl}}/api/applications/test-app/data/users
 Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "Jane Smith",
-  "email": "jane.smith@example.com",
-  "age": 25,
-  "address": {
-    "street": "456 Oak Ave",
-    "city": "San Francisco",
-    "country": "USA"
-  },
-  "tags": ["designer", "ui/ux", "frontend"]
-}
-
-###
-
-### Get all data models for an entity
-GET {{baseUrl}}/api/data/users
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### Get data model by unique identifier
-# Replace {uniqueIdentifier} with actual value from create response
-GET {{baseUrl}}/api/data/users/john.doe@example.com-1234567890
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### Update data model
-# Replace {uniqueIdentifier} with actual value
-PUT {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "John Updated Doe",
-  "email": "john.doe@example.com",
-  "age": 31,
-  "address": {
-    "street": "789 New Street",
-    "city": "Boston",
-    "country": "USA"
-  },
-  "tags": ["developer", "javascript", "fullstack", "nodejs"]
-}
-
-###
-
-### Patch data model (partial update)
-# Replace {uniqueIdentifier} with actual value
-PATCH {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "age": 32,
-  "address": {
-    "city": "Chicago"
-  },
-  "tags": ["developer", "python", "ai"]
-}
-
-###
-
-### Search data models - Single filter (Greater Than)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "age",
-      "operator": "GT",
-      "value": 25
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search data models - Multiple filters (EQ and GE)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "address.city",
-      "operator": "EQ",
-      "value": "New York"
-    },
-    {
-      "jsonPath": "age",
-      "operator": "GE",
-      "value": 30
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search data models - String contains
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "name",
-      "operator": "EQ",
-      "value": "John Doe"
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search data models - Array contains (IN operator)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "tags[*]",
-      "operator": "CONTAINS",
-      "value": ["developer"]
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with less than
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "age",
-      "operator": "LT",
-      "value": 30
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with less than or equal
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "age",
-      "operator": "LE",
-      "value": 30
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with NOT_IN operator
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "address.city",
-      "operator": "NOT_IN",
-      "value": ["New York", "Boston"]
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with HAS_KEY operator (check if JSON has a key)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "address",
-      "operator": "HAS_KEY",
-      "value": "postalCode"
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with HAS_ANY_KEYS operator
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "address",
-      "operator": "HAS_ANY_KEYS",
-      "value": ["street", "apartment"]
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with CONTAINED_BY operator (subset check)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "tags",
-      "operator": "CONTAINED_BY",
-      "value": ["developer", "javascript", "backend", "frontend", "designer"]
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with invalid JSON path (should return error)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "invalid..path",
-      "operator": "EQ",
-      "value": "test"
-    }
-  ]
-}
-
-###
-
-### Search with empty filters (should return all data)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [],
-  "pageNo": 1,
-  "pageSize": 5
-}
-
-###
-
-### Search with PATH_EXISTS operator (JSONPath query)
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "",
-      "operator": "PATH_EXISTS",
-      "value": "$.address.street"
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Search with NE (Not Equal) operator
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "address.city",
-      "operator": "NE",
-      "value": "New York"
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Complex search with multiple operators
-POST {{baseUrl}}/api/data/users/search
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "filters": [
-    {
-      "jsonPath": "age",
-      "operator": "GT",
-      "value": 20
-    },
-    {
-      "jsonPath": "age",
-      "operator": "LT",
-      "value": 40
-    },
-    {
-      "jsonPath": "address.country",
-      "operator": "EQ",
-      "value": "USA"
-    }
-  ],
-  "pageNo": 1,
-  "pageSize": 10
-}
-
-###
-
-### Migrate data model to v2
-# Replace {uniqueIdentifier} with actual value
-POST {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890/migrate
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "destinationVersion": "v2"
-}
-
-###
-
-### Delete data model
-# Replace {uniqueIdentifier} with actual value
-DELETE {{baseUrl}}/api/data/users/john.doe@example.com-1234567890
-Authorization: {{authToken}}
-Host: {{tenantHost}}
+Host: test.example.com
 
 ###
 
 ### ============================================
-### ERROR TESTING
+### CONFIGURATION VARIABLES
 ### ============================================
-
-### Test 404 - Entity not found
-GET {{baseUrl}}/api/data/nonexistent
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
+### Set these variables in your HTTP client:
 ###
-
-### Test 404 - Version not found
-POST {{baseUrl}}/api/data/users/v999
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "Test User",
-  "email": "test@example.com"
-}
-
+### @baseUrl = http://localhost:8080
+### @authToken = Bearer your-jwt-token
+### @tenantHost = your-tenant.example.com
 ###
-
-### Test 400 - Invalid JSON schema
-POST {{baseUrl}}/api/data/users/v1
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "Missing Email"
-}
-
-###
-
-### Test 404 - Data model not found
-GET {{baseUrl}}/api/data/users/nonexistent-id
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-###
-
-### Test migration to non-existent version
-POST {{baseUrl}}/api/data/users/v1/john.doe@example.com-1234567890/migrate
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "destinationVersion": "v999"
-}
-
-###
-
 ### ============================================
-### RE-INDEX APIS
+### TESTING NOTES
 ### ============================================
-
-### Re-index all data models for an entity
-POST {{baseUrl}}/api/data/users/reindex
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "modifiedAfter": "2024-01-01T00:00:00Z"
-}
-
 ###
-
-### Re-index all data models for an entity (from specific date)
-POST {{baseUrl}}/api/data/users/reindex
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "modifiedAfter": "2024-12-01T00:00:00Z"
-}
-
+### 🔄 Testing Order:
+### 1. Start with admin-apis.http (create tenants)
+### 2. Use application-apis.http (create applications)
+### 3. Use schema-apis.http (define data schemas)
+### 4. Use data-apis.http (manage actual data)
+### 5. Use error-testing-apis.http (verify error handling)
 ###
-
-### Re-index with invalid date format (error test)
-POST {{baseUrl}}/api/data/users/reindex
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "modifiedAfter": "invalid-date"
-}
-
+### 🎯 Key Features Demonstrated:
+### - Multi-tenancy with complete isolation
+### - Application-scoped data organization
+### - Schema versioning and migration
+### - Rich search and filtering capabilities
+### - Comprehensive error handling
+### - Security and authorization
 ###
-
+### 📝 Response Tracking:
+### - Save IDs from create responses for subsequent tests
+### - Replace {id} and {uniqueIdentifier} placeholders with actual values
+### - Use proper tenant hosts for multi-tenant testing
+###
 ### ============================================
-### SCHEMA VALIDATION CONDITIONAL TESTING
-### ============================================
-
-### Create a schema with validation disabled
-POST {{baseUrl}}/api/schemas
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "entityName": "products",
-  "versionName": "v1",
-  "jsonSchema": {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "name": {
-        "type": "string",
-        "minLength": 1
-      },
-      "price": {
-        "type": "number",
-        "minimum": 0
-      }
-    },
-    "required": ["name", "price"]
-  },
-  "uniqueIdentifierFormatter": "{name}-{timestamp}",
-  "indexedJsonPaths": [
-    "name",
-    "price"
-  ],
-  "isValidationEnabled": false
-}
-
-###
-
-### Test creating data with validation disabled (should accept invalid data)
-POST {{baseUrl}}/api/data/products/v1
-Content-Type: application/json
-Authorization: {{authToken}}
-Host: {{tenantHost}}
-
-{
-  "name": "",
-  "price": -10,
-  "invalid_field": "this should be allowed"
-}
-
-###
-
-### ============================================
-### AUDIT LOGGING
-### ============================================
-### Note: Audit logging is performed automatically for all CRUD operations
-### on data models. The audit logs are stored in the database but there are
-### currently no API endpoints to query audit logs directly.
-### Audit logs capture:
-### - User who performed the action (from JWT token)
-### - Client IP address  
-### - Timestamp of the action
-### - Entity name and unique identifier
-### - Action type (CREATE, UPDATE, PATCH, DELETE, MIGRATE, RE_INDEX)
-### - Old and new data for comparison
-### - Tenant information
-###

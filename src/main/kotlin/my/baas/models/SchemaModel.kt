@@ -8,11 +8,11 @@ import my.baas.services.LifecycleEvent
 
 
 @Entity
-@Index(columnNames = ["entity_name", "version_name", "tenant_id"], unique = true)
+@Index(columnNames = ["entity_name", "version_name", "tenant_id", "application_id"], unique = true)
 @GenerateDto(
     createDto = true,
     viewDto = true,
-    excludeFromView = ["tenant_id"] // Additional exclusion for view DTO
+    excludeFromView = ["tenant_id", "application_id"] // Additional exclusion for view DTO
 )
 class SchemaModel(
 
@@ -33,15 +33,15 @@ class SchemaModel(
 
     var isValidationEnabled: Boolean = true
 
-) : BaseTenantModel() {
+) : BaseAppModel() {
 
-    fun generateTableName(tenantId: Long): String {
-        return generateTableName(tenantId, entityName)
+    fun generateTableName(tenantId: Long, applicationId: Long): String {
+        return generateTableName(tenantId, applicationId, entityName)
     }
     
     companion object {
-        fun generateTableName(tenantId: Long, entityName: String): String {
-            return "data_model_${tenantId}_${entityName.lowercase()}"
+        fun generateTableName(tenantId: Long, applicationId: Long, entityName: String): String {
+            return "data_model_${tenantId}_${applicationId}_${entityName.lowercase()}"
         }
     }
 }

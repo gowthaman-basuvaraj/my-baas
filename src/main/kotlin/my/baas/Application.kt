@@ -7,6 +7,7 @@ import my.baas.auth.AuthHandler
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.controllers.*
+import my.baas.models.ApplicationModel
 import my.baas.services.DataModelService
 import my.baas.services.RedisEventPublisher
 import org.slf4j.LoggerFactory
@@ -48,7 +49,62 @@ fun main() {
                 // Regular APIs - tenant-scoped
                 path("api") {
                     before(AuthHandler.handle)
-                    crud("schemas/{id}", SchemaController)
+                    // Application management
+                    crud("applications/{id}", ApplicationController)
+                    // Application-scoped schemas
+                    path("applications/{applicationName}") {
+                        before { ctx ->
+                            // Set application context from path
+                            val applicationName = ctx.pathParam("applicationName")
+                            val tenantId = CurrentUser.getTenant()?.id
+                            if (tenantId != null) {
+                                val application = AppContext.db.find(ApplicationModel::class.java)
+                                    .where()
+                                    .eq("applicationName", applicationName)
+                                    .eq("tenantId", tenantId)
+                                    .findOne()
+                                if (application != null) {
+                                    CurrentUser.setApplicationContext(application.id, application.applicationName)
+                                }
+                            }
+                        }
+                        crud("schemas/{id}", SchemaController)
+                        // Application-scoped data endpoints
+                        path("data/{entityName}") {
+                            before { ctx ->
+                                // Set entity context
+                                val entityName = ctx.pathParam("entityName")
+                                CurrentUser.setEntityContext(entityName, null)
+                                dataModelService.validateSchemaExistsForEntity(entityName)
+                            }
+                            post("search", DataModelController::search)
+                            get(DataModelController::getAll)
+                            path("{versionName}") {
+                                before { ctx ->
+                                    val versionName = ctx.pathParam("versionName")
+                                    val entityName = ctx.pathParam("entityName")
+                                    CurrentUser.setEntityContext(entityName, versionName)
+                                    if(!ctx.path().endsWith("/search")) {
+                                        dataModelService.validateSchemaExistsForEntityAndVersion(
+                                            entityName,
+                                            versionName
+                                        )
+                                    }
+                                }
+                                get(DataModelController::getAll)
+                                get("schema", DataModelController::getSchema)
+                                post("validate", DataModelController::validatePayload)
+                                post(DataModelController::create)
+                                path("{uniqueIdentifier}") {
+                                    get(DataModelController::getOne)
+                                    put(DataModelController::update)
+                                    patch(DataModelController::patch)
+                                    delete(DataModelController::delete)
+                                    post("migrate", DataModelController::migrate)
+                                }
+                            }
+                        }
+                    }
                     path("reports") {
                         get(ReportController::getAll)
                         post(ReportController::create)
@@ -68,36 +124,6 @@ fun main() {
                             get(ReportController::getJobStatus)
                             post("cancel", ReportController::cancelJob)
                             get("download", ReportController::downloadResult)
-                        }
-                    }
-                    path("data") {
-                        path("{entityName}") {
-                            before {
-                                dataModelService.validateSchemaExistsForEntity(it.pathParam("entityName"))
-                            }
-                            post("search", DataModelController::search)
-                            get(DataModelController::getAll)
-                            path("{versionName}") {
-                                before {
-                                    if(!it.path().endsWith("/search")) {
-                                        dataModelService.validateSchemaExistsForEntityAndVersion(
-                                            it.pathParam("entityName"),
-                                            it.pathParam("versionName")
-                                        )
-                                    }
-                                }
-                                get(DataModelController::getAll)
-                                get("schema", DataModelController::getSchema)
-                                post("validate", DataModelController::validatePayload)
-                                post(DataModelController::create)
-                                path("{uniqueIdentifier}") {
-                                    get(DataModelController::getOne)
-                                    put(DataModelController::update)
-                                    patch(DataModelController::patch)
-                                    delete(DataModelController::delete)
-                                    post("migrate", DataModelController::migrate)
-                                }
-                            }
                         }
                     }
                     after { CurrentUser.clear() }
