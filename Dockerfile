@@ -15,14 +15,17 @@ COPY src/ ./src/
 RUN gradle clean build -x test
 
 # Runtime stage
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jdk
+
+RUN curl -sL https://deb.nodesource.com/setup_24.x | bash -
 
 # Install required packages
 RUN apt-get update && apt-get install -y \
     nodejs \
-    npm \
     curl \
+    net-tools \
     unzip \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm globally
@@ -43,13 +46,13 @@ RUN pnpm install
 WORKDIR /app
 COPY api-tests/ ./api-tests/
 COPY api-tests.http .
-COPY app.properties .
+COPY app-test.properties app.properties
 
 # Download and install IntelliJ HTTP client
-RUN curl -fsSL https://jb.gg/ijhttp/latest -o ijhttp.zip \
+RUN curl -f -L -o ijhttp.zip "https://jb.gg/ijhttp/latest" \
     && unzip ijhttp.zip -d /opt/ \
-    && chmod +x /opt/ijhttp \
-    && ln -s /opt/ijhttp /usr/local/bin/ijhttp \
+    && chmod +x /opt/ijhttp/ijhttp \
+    && ln -s /opt/ijhttp/ijhttp /usr/local/bin/ijhttp \
     && rm ijhttp.zip
 
 # Copy startup script

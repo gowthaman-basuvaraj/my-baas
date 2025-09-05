@@ -27,7 +27,9 @@ services:
       - DATABASE_URL=jdbc:postgresql://postgres:5432/${DATABASE_NAME:-mybaas}
       - DATABASE_USERNAME=${DATABASE_USERNAME:-postgres}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD:-postgres}
+      - PGPASSWORD=${DATABASE_PASSWORD:-postgres}
       - DATABASE_NAME=${DATABASE_NAME:-mybaas}
+      - DROP_DB_ON_START=${DROP_DB_ON_START:-no}
     volumes:
       - ./logs:/app/logs
 

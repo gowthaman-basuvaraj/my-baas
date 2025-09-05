@@ -15,6 +15,7 @@ import io.ebean.datasource.DataSourceConfig
 import my.baas.auth.CurrentTenantProvider
 import my.baas.auth.CurrentUserProvider
 import my.baas.models.ReportModel
+import my.baas.models.TenantModel
 import my.baas.services.completion.CompletionActionProcessor
 import my.baas.services.completion.EmailProcessor
 import my.baas.services.completion.S3UploadProcessor
@@ -27,23 +28,27 @@ object AppContext {
         ConfigFactory.builder().build().create(AppConfig::class.java)
     }
 
-    fun dataSourceConfig(): DatabaseBuilder {
+    fun dataSourceConfig(name: String, isDefault: Boolean): DatabaseBuilder {
         return DatabaseConfig().also { dc ->
             dc.setDataSourceConfig(DataSourceConfig().also {
                 it.username = appConfig.dbUsername()
                 it.password = appConfig.dbPassword()
                 it.url = appConfig.dbUrl()
             })
+            dc.name = name
+            dc.setDisableClasspathSearch(false)
+            dc.addPackage("my.baas.models")
+            dc.isRegister = true
             dc.objectMapper = objectMapper
             dc.jsonFactory = MappingJsonFactory(objectMapper)
             dc.currentUserProvider = CurrentUserProvider()
             dc.isRunMigration = true
-            dc.isDefaultServer = true
+            dc.isDefaultServer = isDefault
         }
     }
 
     val db: Database by lazy {
-        DatabaseFactory.create(dataSourceConfig().also {
+        DatabaseFactory.create(dataSourceConfig("default", true).also {
             it.currentTenantProvider(CurrentTenantProvider())
             it.tenantMode(TenantMode.PARTITION)
         })
@@ -52,7 +57,7 @@ object AppContext {
     //admin DB does not have tenant-related information
     //in the future, where a scenario will arise, there is a DB per tenant, we will handle it at that time
     val adminDatabase: Database by lazy {
-        DatabaseFactory.create(dataSourceConfig())
+        DatabaseFactory.create(dataSourceConfig("admin", false))
     }
 
     val objectMapper = jacksonObjectMapper().apply {

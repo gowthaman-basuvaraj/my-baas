@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.ebean)
+    alias(libs.plugins.shadow)
 }
 
 group = "my.baas"
@@ -83,6 +84,7 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
 tasks {
     jar {
         manifest {
@@ -90,5 +92,20 @@ tasks {
                 "Main-Class" to "my.baas.ApplicationKt"
             )
         }
+    }
+    
+    shadowJar {
+        archiveClassifier.set("")
+        isZip64 = true
+        manifest {
+            attributes(
+                "Main-Class" to "my.baas.ApplicationKt"
+            )
+        }
+        mergeServiceFiles()
+    }
+    
+    build {
+        dependsOn(shadowJar)
     }
 }

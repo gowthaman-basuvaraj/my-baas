@@ -9,7 +9,8 @@ let server = new OAuth2Server();
 await server.issuer.keys.generate('RS256');
 
 // Start the server
-await server.start(8080, 'localhost');
+await server.start(8080, '0.0.0.0');
+
 let tr = {
     payload: {
         preferred_username: 'test',

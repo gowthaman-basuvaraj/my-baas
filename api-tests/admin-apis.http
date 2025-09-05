@@ -13,7 +13,10 @@ Authorization: {{authToken}}
   "name": "Acme Corporation",
   "domain": "acme.example.com",
   "isActive": true,
-  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"]
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"],
+  "config": {
+    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
+  }
 }
 
 > {% 
@@ -34,7 +37,10 @@ Authorization: {{authToken}}
 {
   "name": "Beta Company",
   "domain": "beta.example.com",
-  "isActive": true
+  "isActive": true,
+  "config": {
+    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
+  }
 }
 
 > {% 

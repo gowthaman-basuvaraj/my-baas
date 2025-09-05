@@ -63,7 +63,10 @@ Authorization: {{authToken}}
 {
   "name": "Test Company",
   "domain": "test.example.com",
-  "isActive": true
+  "isActive": true,
+  "config": {
+    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
+  }
 }
 
 > {% 

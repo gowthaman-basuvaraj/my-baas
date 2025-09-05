@@ -8,6 +8,7 @@ import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.controllers.*
 import my.baas.models.ApplicationModel
+import my.baas.models.TenantModel
 import my.baas.services.DataModelService
 import my.baas.services.RedisEventPublisher
 import org.slf4j.LoggerFactory
@@ -18,8 +19,7 @@ private val dataModelService = DataModelService()
 fun main() {
     logger.info("Starting MyBaaS application...")
 
-    AppContext.db
-    logger.info("Database connection initialized")
+    logger.info("Database connection initialized, Total Tenants = ${AppContext.db.find(TenantModel::class.java).findCount()}")
 
     // Initialize Redis event publisher if enabled
     RedisEventPublisher.initialize()

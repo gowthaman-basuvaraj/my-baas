@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <migration xmlns="http://ebean-orm.github.io/xml/ns/dbmigration">
     <changeSet type="apply">
+        <createTable name="application_model" pkName="pk_application_model">
+            <column name="id" type="bigint" primaryKey="true"/>
+            <column name="tenant_id" type="bigint" notnull="true"/>
+            <column name="application_name" type="varchar" notnull="true"/>
+            <column name="description" type="varchar"/>
+            <column name="is_active" type="boolean" defaultValue="false" notnull="true"/>
+            <column name="deleted" type="boolean" defaultValue="false" notnull="true"/>
+            <column name="version" type="integer" notnull="true"/>
+            <column name="when_created" type="timestamp" notnull="true"/>
+            <column name="when_modified" type="timestamp" notnull="true"/>
+            <column name="who_created" type="varchar" notnull="true"/>
+            <column name="who_modified" type="varchar" notnull="true"/>
+            <uniqueConstraint name="uq_application_model_application_name_tenant_id" columnNames="application_name,tenant_id" oneToOne="false" nullableColumns=""/>
+        </createTable>
         <createTable name="audit_log" pkName="pk_audit_log">
             <column name="id" type="bigint" primaryKey="true"/>
             <column name="tenant_id" type="bigint" notnull="true"/>
@@ -71,6 +85,7 @@
         <createTable name="schema_model" pkName="pk_schema_model">
             <column name="id" type="bigint" primaryKey="true"/>
             <column name="tenant_id" type="bigint" notnull="true"/>
+            <column name="application_id" type="bigint" references="application_model.id" foreignKeyName="fk_schema_model_application_id" foreignKeyIndex="ix_schema_model_application_id"/>
             <column name="entity_name" type="varchar" notnull="true"/>
             <column name="json_schema" type="jsonb" notnull="true"/>
             <column name="version_name" type="varchar" notnull="true"/>
@@ -84,7 +99,7 @@
             <column name="when_modified" type="timestamp" notnull="true"/>
             <column name="who_created" type="varchar" notnull="true"/>
             <column name="who_modified" type="varchar" notnull="true"/>
-            <uniqueConstraint name="uq_schema_model_entity_name_version_name_tenant_id" columnNames="entity_name,version_name,tenant_id" oneToOne="false" nullableColumns=""/>
+            <uniqueConstraint name="uq_schema_model_entity_name_version_name_tenant_id_applic_1" columnNames="entity_name,version_name,tenant_id,application_id" oneToOne="false" nullableColumns="application_id"/>
         </createTable>
         <createTable name="tenant_model" pkName="pk_tenant_model">
             <column name="id" type="bigint" primaryKey="true"/>
@@ -103,6 +118,7 @@
             <column name="who_modified" type="varchar" notnull="true"/>
             <uniqueConstraint name="uq_tenant_model_domain" columnNames="domain" oneToOne="false" nullableColumns=""/>
         </createTable>
+        <createIndex indexName="ix_application_model_tenant_id" tableName="application_model" columns="tenant_id"/>
         <createIndex indexName="ix_audit_log_tenant_id_entity_name_action_created_at_uniq_1" tableName="audit_log" columns="tenant_id,entity_name,action,created_at,unique_identifier,user_id"/>
         <createIndex indexName="ix_audit_log_tenant_id" tableName="audit_log" columns="tenant_id"/>
         <createIndex indexName="report_execution_report_id_idx" tableName="report_execution_log" columns="report_id"/>
