@@ -18,7 +18,7 @@ services:
   mybaas:
     build: .
     ports:
-      - "8081:8081"  # Main application
+      - "7070:7070"  # Main application
       - "8080:8080"  # OAuth2 mock server
     depends_on:
       postgres:
