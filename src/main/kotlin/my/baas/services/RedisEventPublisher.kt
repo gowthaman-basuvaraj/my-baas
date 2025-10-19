@@ -6,6 +6,7 @@ import my.baas.config.AppContext.objectMapper
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPooled
 import redis.clients.jedis.JedisPubSub
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 object RedisEventPublisher {
@@ -14,44 +15,43 @@ object RedisEventPublisher {
     private const val EVENTS_CHANNEL = "mybaas:events"
 
     private val appConfig: AppConfig = AppContext.appConfig
-    private val password = appConfig.redisPassword()
 
     private val jedisPool: JedisPooled by lazy {
+
+        val host = appConfig.redisHost().orElseThrow { IllegalArgumentException("redis.host not given") }
+        val port = appConfig.redisPort().orElse(6379)
+        val user = appConfig.redisUser().orElse("")
+        val password = appConfig.redisPassword()
+
         if (password.isPresent) {
             JedisPooled(
-                appConfig.redisHost().orElseThrow { IllegalArgumentException("redis.host not given") },
-                appConfig.redisPort().orElse(6379),
-                appConfig.redisUser().orElse(""),
+                host,
+                port,
+                user,
                 password.get()
             )
         } else {
             JedisPooled(
-                appConfig.redisHost().orElseThrow { IllegalArgumentException("redis.host not given") },
-                appConfig.redisPort().orElse(6379)
+                host,
+                port
             )
         }
     }
-    private var isInitialized = false
+    private val isInitialized = AtomicBoolean(false)
 
     fun initialize() {
-        if (isInitialized || !appConfig.isRedisEnabled()) {
+        if (isInitialized.get() || !appConfig.isRedisEnabled()) {
             return
         }
 
-        try {
-
-            // Start subscriber in background thread
-            startSubscriber()
-
-            isInitialized = true
-            logger.info("Redis event publisher initialized successfully")
-        } catch (e: Exception) {
-            logger.error("Failed to initialize Redis: ${e.message}", e)
-        }
+        // Start subscriber in background thread
+        startSubscriber()
+        isInitialized.set(true)
     }
 
     fun publishEvent(event: DataChangeEvent) {
-        if (!isInitialized) {
+        if (!isInitialized.get()) {
+            logger.info("Redis event publisher is Not initialized, skip publishing event")
             return
         }
 
@@ -108,7 +108,7 @@ object RedisEventPublisher {
                 logger.error("Redis subscriber error: ${e.message}", e)
                 // Try to reconnect after a delay
                 Thread.sleep(5000)
-                if (isInitialized) {
+                if (isInitialized.get()) {
                     startSubscriber()
                 }
             }
@@ -116,6 +116,6 @@ object RedisEventPublisher {
     }
 
 
-    fun isRedisEnabled(): Boolean = appConfig.isRedisEnabled() && isInitialized
+    fun isRedisEnabled(): Boolean = appConfig.isRedisEnabled() && isInitialized.get()
 
 }
