@@ -23,6 +23,7 @@ import java.nio.file.Files
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -33,12 +34,27 @@ object JobRunnerService {
     private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl()
     private val logger = LoggerFactory.getLogger(javaClass)
     private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(reportConfig.maxConcurrentJobs)
-    private val minioClient: MinioClient? = initMinioClient()
-    private val minioConfig: MinioConfig? = reportConfig.minioConfig
+
+    private val clientCache = ConcurrentHashMap<String, MinioClient>()
+    private fun MinioConfig.Present.makeClient(): MinioClient {
+        return clientCache.computeIfAbsent(endpoint) {
+            val client = MinioClient.builder().endpoint(endpoint)
+                .credentials(accessKey, secretKey).build()
+
+            // Ensure bucket exists
+            if (!client.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build())) {
+                client.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build())
+                logger.info("Created MinIO bucket: $bucketName")
+            }
+            client
+        }
+    }
+
+    private val minioConfig: MinioConfig = reportConfig.minioConfig
 
     init {
         // Ensure local storage directory exists
-        Files.createDirectories(reportConfig.getLocalStoragePathAsPath())
+        Files.createDirectories(reportConfig.localStoragePath)
 
         // Start job processor
         executor.scheduleWithFixedDelay(::processPendingJobs, 0, 5, TimeUnit.SECONDS)
@@ -47,26 +63,6 @@ object JobRunnerService {
         executor.scheduleWithFixedDelay(::cleanupOldResults, 1, 24, TimeUnit.HOURS)
 
         logger.info("JobRunnerService initialized with ${reportConfig.maxConcurrentJobs} max concurrent jobs")
-    }
-
-    private fun initMinioClient(): MinioClient? {
-        return if (reportConfig.enableMinioUpload && minioConfig != null) {
-            try {
-                val client = MinioClient.builder().endpoint(minioConfig.endpoint)
-                    .credentials(minioConfig.accessKey, minioConfig.secretKey).build()
-
-                // Ensure bucket exists
-                if (!client.bucketExists(BucketExistsArgs.builder().bucket(minioConfig.bucketName).build())) {
-                    client.makeBucket(MakeBucketArgs.builder().bucket(minioConfig.bucketName).build())
-                    logger.info("Created MinIO bucket: ${minioConfig.bucketName}")
-                }
-
-                client
-            } catch (e: Exception) {
-                logger.error("Failed to initialize MinIO client", e)
-                null
-            }
-        } else null
     }
 
     private fun processPendingJobs() {
@@ -119,7 +115,7 @@ object JobRunnerService {
             executionLog.storageLocation = ReportExecutionLog.StorageLocation.LOCAL
 
             // Upload to MinIO if configured
-            if (reportConfig.enableMinioUpload && minioConfig != null && minioClient != null) {
+            if (reportConfig.enableMinioUpload && minioConfig is MinioConfig.Present) {
                 val (s3BucketName, s3ObjectKey) = uploadToMinio(executionLog, localFile)
                 executionLog.s3BucketName = s3BucketName
                 executionLog.s3ObjectKey = s3ObjectKey
@@ -153,7 +149,7 @@ object JobRunnerService {
         val fileExtension = executionLog.fileFormat.fileExtension()
         val fileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.$fileExtension"
         val zipFileName = "${executionLog.report.name}_${timestamp}_${executionLog.jobId}.zip"
-        val zipFile = File(reportConfig.getLocalStoragePathAsPath().toFile(), zipFileName)
+        val zipFile = File(reportConfig.localStoragePath.toFile(), zipFileName)
 
         return ZipOutputStream(FileOutputStream(zipFile)).use { zipOutputStream ->
             zipOutputStream.putNextEntry(ZipEntry(fileName))
@@ -314,25 +310,28 @@ object JobRunnerService {
     }
 
     private fun uploadToMinio(executionLog: ReportExecutionLog, file: File): Pair<String?, String?> {
-        if (minioClient == null || minioConfig == null) return null to null
         val tenant = AppContext.db.find(TenantModel::class.java, executionLog.tenantId) ?: return null to null
 
-        return try {
-            val objectKey =
-                "${minioConfig.prefix}${tenant.domain}/${executionLog.jobId}/${file.name}"
+        return if (minioConfig is MinioConfig.Present) {
+            try {
+                val objectKey =
+                    "${minioConfig.prefix}${tenant.domain}/${executionLog.jobId}/${file.name}"
 
-            val putObjectArgs = PutObjectArgs.builder()
-                .bucket(minioConfig.bucketName)
-                .`object`(objectKey)
-                .contentType(executionLog.fileFormat.getContentType()).build()
+                val putObjectArgs = PutObjectArgs.builder()
+                    .bucket(minioConfig.bucketName)
+                    .`object`(objectKey)
+                    .contentType(executionLog.fileFormat.getContentType()).build()
 
-            minioClient.putObject(putObjectArgs)
+                minioConfig.makeClient().putObject(putObjectArgs)
 
-            logger.info("File uploaded to MinIO: ${minioConfig.endpoint}/${minioConfig.bucketName}/$objectKey")
+                logger.info("File uploaded to MinIO: ${minioConfig.endpoint}/${minioConfig.bucketName}/$objectKey")
 
-            minioConfig.bucketName to objectKey
-        } catch (e: Exception) {
-            logger.error("Failed to upload file to MinIO for job: ${executionLog.jobId}", e)
+                minioConfig.bucketName to objectKey
+            } catch (e: Exception) {
+                logger.error("Failed to upload file to MinIO for job: ${executionLog.jobId}", e)
+                null to null
+            }
+        } else {
             null to null
         }
 
@@ -441,20 +440,23 @@ object JobRunnerService {
     }
 
     private fun deleteFromMinio(executionLog: ReportExecutionLog): Boolean {
-        if (minioClient == null) {
-            //if we have an uploaded file, but no minio client, then deleted is false
-            return !(executionLog.s3ObjectKey != null && executionLog.s3BucketName != null)
-        }
 
-        return try {
-            minioClient.removeObject(
-                RemoveObjectArgs.builder().bucket(executionLog.s3BucketName).`object`(executionLog.s3ObjectKey).build()
-            )
 
-            logger.debug("Deleted old MinIO file: ${executionLog.s3BucketName}/${executionLog.s3ObjectKey}")
-            true
-        } catch (e: Exception) {
-            logger.warn("Failed to delete old MinIO file for job: ${executionLog.jobId}", e)
+        return if (minioConfig is MinioConfig.Present) {
+            try {
+                minioConfig.makeClient().removeObject(
+                    RemoveObjectArgs.builder().bucket(executionLog.s3BucketName).`object`(executionLog.s3ObjectKey)
+                        .build()
+                )
+
+                logger.debug("Deleted old MinIO file: ${executionLog.s3BucketName}/${executionLog.s3ObjectKey}")
+                true
+            } catch (e: Exception) {
+                logger.warn("Failed to delete old MinIO file for job: ${executionLog.jobId}", e)
+                false
+            }
+        } else {
+            logger.warn("MinIO Config missing, not deleting")
             false
         }
     }
@@ -481,27 +483,30 @@ object JobRunnerService {
     }
 
     private fun downloadFromMinio(executionLog: ReportExecutionLog): File? {
-        if (minioClient == null || executionLog.s3ObjectKey == null || executionLog.s3BucketName == null) {
-            return null
-        }
+        if (minioConfig is MinioConfig.Present && executionLog.s3ObjectKey != null && executionLog.s3BucketName != null) {
+            try {
+                val tempFile = File.createTempFile("report_${executionLog.jobId}", ".tmp")
 
-        try {
-            val tempFile = File.createTempFile("report_${executionLog.jobId}", ".tmp")
+                val getObjectArgs =
+                    GetObjectArgs.builder().bucket(executionLog.s3BucketName).`object`(executionLog.s3ObjectKey).build()
 
-            val getObjectArgs =
-                GetObjectArgs.builder().bucket(executionLog.s3BucketName).`object`(executionLog.s3ObjectKey).build()
-
-            minioClient.getObject(getObjectArgs).use { inputStream ->
-                tempFile.outputStream().use { outputStream ->
-                    inputStream.copyTo(outputStream)
+                minioConfig.makeClient().getObject(getObjectArgs).use { inputStream ->
+                    tempFile.outputStream().use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
                 }
+
+                return tempFile
+
+            } catch (e: Exception) {
+                logger.error("Failed to download file from MinIO for job: ${executionLog.jobId}", e)
+                return null
             }
-
-            return tempFile
-
-        } catch (e: Exception) {
-            logger.error("Failed to download file from MinIO for job: ${executionLog.jobId}", e)
+        } else {
+            logger.warn("Not Downloading from MinIO, config is missing? ${minioConfig !is MinioConfig.Present}, BucketName is Missing? ${executionLog.s3BucketName == null}, ObjectKey is Missing? ${executionLog.s3ObjectKey == null}")
             return null
         }
+
+
     }
 }

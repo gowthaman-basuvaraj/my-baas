@@ -5,7 +5,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 data class ReportConfig(
-    val localStoragePath: String,
+    val localStoragePath: Path,
     val maxConcurrentJobs: Int,
     val jobTimeoutMinutes: Long,
     val resultRetentionDays: Int,
@@ -13,7 +13,6 @@ data class ReportConfig(
     val minioConfig: MinioConfig,
     val emailConfig: EmailConfig
 ) {
-    fun getLocalStoragePathAsPath(): Path = Paths.get(localStoragePath)
 
     companion object {
         private val logger = LoggerFactory.getLogger("ReportConfig")
@@ -55,7 +54,7 @@ data class ReportConfig(
             } else EmailConfig.Empty
 
             return ReportConfig(
-                localStoragePath = appConfig.reportLocalStoragePath(),
+                localStoragePath = Paths.get(appConfig.reportLocalStoragePath()),
                 maxConcurrentJobs = appConfig.reportMaxConcurrentJobs(),
                 jobTimeoutMinutes = appConfig.reportJobTimeoutMinutes(),
                 resultRetentionDays = appConfig.reportResultRetentionDays(),
