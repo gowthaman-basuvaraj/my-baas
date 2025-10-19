@@ -6,26 +6,14 @@ import io.javalin.http.NotFoundResponse
 import my.baas.auth.CurrentUser
 import my.baas.models.*
 import my.baas.repositories.ReportExecutionRepository
-import my.baas.repositories.ReportExecutionRepositoryImpl
 import my.baas.repositories.ReportRepository
-import my.baas.repositories.ReportRepositoryImpl
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*
 
-data class ReportExecutionResult(
-    val reportId: Long,
-    val reportName: String,
-    val success: Boolean,
-    val data: List<Map<String, Any?>>? = null,
-    val errorMessage: String? = null,
-    val executionTimeMs: Long,
-    val rowCount: Int = 0
-)
-
 object ReportService{
 
-    private val repository: ReportRepository = ReportRepository,
+    private val repository: ReportRepository = ReportRepository
     private val executionRepository: ReportExecutionRepository = ReportExecutionRepository
     private val logger = LoggerFactory.getLogger(javaClass)
 
