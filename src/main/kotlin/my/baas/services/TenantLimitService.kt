@@ -14,8 +14,6 @@ object TenantLimitService {
     fun validateSchemaCreation() {
         val tenant = getCurrentTenant()
         val currentSchemaCount = AppContext.db.find(SchemaModel::class.java)
-            .where()
-            .eq("tenantId", tenant.id)
             .findCount()
 
         if (currentSchemaCount >= tenant.config.maxSchemas) {
@@ -27,8 +25,6 @@ object TenantLimitService {
     fun validateReportCreation() {
         val tenant = getCurrentTenant()
         val currentReportCount = AppContext.db.find(ReportModel::class.java)
-            .where()
-            .eq("tenantId", tenant.id)
             .findCount()
 
         if (currentReportCount >= tenant.config.maxReports) {
