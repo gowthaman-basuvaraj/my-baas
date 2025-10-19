@@ -17,6 +17,8 @@ object JwtProvider {
 
     private val logger = LoggerFactory.getLogger(JwtProvider::class.java)
     private val wellKnownCache = ConcurrentHashMap<String, OAuthWellKnown>()
+    private val jwksCache = ConcurrentHashMap<String, List<JsonWebKey>>()
+
     fun verify(token: String, wellKnownUrl: String): JwtClaims {
         logger.info("Verifying JWT token: $token, with wellKnownUrl: $wellKnownUrl")
         val jwksUri = fetchAuthEndpointWellKnown(wellKnownUrl)
@@ -39,13 +41,15 @@ object JwtProvider {
         return jwtConsumer.processToClaims(token)
     }
 
-    private fun fetchJwksKeys(jwksUri: String): MutableList<JsonWebKey> {
-        return JsonWebKeySet(
-            HttpClients.createDefault().execute(
-                HttpGet(jwksUri),
-                BasicHttpClientResponseHandler()
-            )
-        ).jsonWebKeys
+    private fun fetchJwksKeys(jwksUri: String): List<JsonWebKey> {
+        return jwksCache.computeIfAbsent(jwksUri) {
+            JsonWebKeySet(
+                HttpClients.createDefault().execute(
+                    HttpGet(jwksUri),
+                    BasicHttpClientResponseHandler()
+                )
+            ).jsonWebKeys
+        }
     }
 
     private fun fetchAuthEndpointWellKnown(wellKnownUrl: String): OAuthWellKnown {
