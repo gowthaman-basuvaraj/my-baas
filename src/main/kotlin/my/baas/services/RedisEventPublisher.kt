@@ -67,7 +67,7 @@ object RedisEventPublisher {
     private fun startSubscriber() {
 
 
-        thread(start = true, isDaemon = true) {
+        thread(start = true) {
             try {
                 jedisPool.subscribe(object : JedisPubSub() {
                     override fun onMessage(channel: String?, message: String?) {
