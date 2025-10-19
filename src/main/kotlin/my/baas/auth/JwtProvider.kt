@@ -11,11 +11,12 @@ import org.jose4j.jwt.consumer.JwtConsumer
 import org.jose4j.jwt.consumer.JwtConsumerBuilder
 import org.jose4j.keys.resolvers.JwksVerificationKeyResolver
 import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 
 object JwtProvider {
 
     private val logger = LoggerFactory.getLogger(JwtProvider::class.java)
-
+    private val wellKnownCache = ConcurrentHashMap<String, OAuthWellKnown>()
     fun verify(token: String, wellKnownUrl: String): JwtClaims {
         logger.info("Verifying JWT token: $token, with wellKnownUrl: $wellKnownUrl")
         val jwksUri = fetchAuthEndpointWellKnown(wellKnownUrl)
@@ -49,13 +50,15 @@ object JwtProvider {
 
     private fun fetchAuthEndpointWellKnown(wellKnownUrl: String): OAuthWellKnown {
 
-        return AppContext.objectMapper.readValue(
-            HttpClients.createDefault().execute(
-                HttpGet(wellKnownUrl),
-                BasicHttpClientResponseHandler()
-            ),
-            OAuthWellKnown::class.java
-        )
+        return wellKnownCache.computeIfAbsent(wellKnownUrl) {
+            AppContext.objectMapper.readValue(
+                HttpClients.createDefault().execute(
+                    HttpGet(wellKnownUrl),
+                    BasicHttpClientResponseHandler()
+                ),
+                OAuthWellKnown::class.java
+            )
+        }
 
     }
 
