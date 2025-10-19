@@ -60,6 +60,9 @@ dependencies {
 
     // IP address
     implementation(libs.ipaddress)
+
+    //expiring-cache
+    implementation(libs.expiring.map)
     
     // Annotation processing for DTO generation
     implementation(libs.kotlinpoet)

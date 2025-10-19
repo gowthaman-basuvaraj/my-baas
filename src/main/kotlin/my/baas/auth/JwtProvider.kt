@@ -1,6 +1,7 @@
 package my.baas.auth
 
 import my.baas.config.AppContext
+import net.jodah.expiringmap.ExpiringMap
 import org.apache.hc.client5.http.classic.methods.HttpGet
 import org.apache.hc.client5.http.impl.classic.BasicHttpClientResponseHandler
 import org.apache.hc.client5.http.impl.classic.HttpClients
@@ -12,12 +13,23 @@ import org.jose4j.jwt.consumer.JwtConsumerBuilder
 import org.jose4j.keys.resolvers.JwksVerificationKeyResolver
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 object JwtProvider {
 
+    private fun <T> makeCache(name: String): MutableMap<String, T> {
+        return ExpiringMap
+            .builder()
+            .expiration(1, TimeUnit.HOURS)
+            .expirationListener { p0: String, _: Any ->
+                logger.debug("Cache for $name, Key $p0 is expired")
+            }
+            .build()
+    }
+
     private val logger = LoggerFactory.getLogger(JwtProvider::class.java)
-    private val wellKnownCache = ConcurrentHashMap<String, OAuthWellKnown>()
-    private val jwksCache = ConcurrentHashMap<String, List<JsonWebKey>>()
+    private val wellKnownCache: MutableMap<String, OAuthWellKnown> = makeCache("wellKnownCache")
+    private val jwksCache: MutableMap<String, List<JsonWebKey>> = makeCache("jwksCache")
 
     fun verify(token: String, wellKnownUrl: String): JwtClaims {
         logger.info("Verifying JWT token: $token, with wellKnownUrl: $wellKnownUrl")

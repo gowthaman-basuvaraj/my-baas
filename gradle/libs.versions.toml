@@ -3,8 +3,8 @@ javalin = "6.7.0"
 openapi = "6.5.0"
 ebean = "15.8.1"
 cactusthorn-config = "0.81"
-kotlin = "2.1.20"
-jackson = "2.18.2"
+kotlin = "2.2.20"
+jackson = "2.19.2"
 jose4j = "0.9.6"
 json-schema-validator = "1.5.3"
 json-path = "2.9.0"
@@ -18,7 +18,7 @@ ebean-platform-postgres = "15.8.1"
 ebean-migration = "13.24.0"
 delight-nashorn-sandbox = "0.5.3"
 jedis = "5.2.0"
-minio = "8.5.15"
+minio = "8.6.0"
 opencsv = "5.9"
 apache-poi = "5.4.0"
 jsch = "0.1.55"
@@ -31,6 +31,7 @@ mockk = "1.13.8"
 testcontainers = "1.19.3"
 kotest = "5.8.0"
 apache-httpclient = "5.4.1"
+expiring-map = "0.5.11"
 
 [libraries]
 javalin = { module = "io.javalin:javalin-bundle", version.ref = "javalin" }
@@ -97,6 +98,7 @@ apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", 
 #IP address validation
 ipaddress = "com.github.seancfoley:ipaddress:5.5.1"
 
+expiring-map = { module = "net.jodah:expiringmap", version.ref = "expiring-map"}
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
