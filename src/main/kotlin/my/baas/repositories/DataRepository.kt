@@ -12,9 +12,11 @@ import my.baas.dto.FilterOperator
 import my.baas.models.DataModel
 import my.baas.models.SchemaModel
 import my.baas.services.TableManagementService.parseJsonPathToChain
+import org.postgresql.util.PGobject
 import org.slf4j.LoggerFactory
 import java.sql.Timestamp
 import java.time.Instant
+
 
 interface DataRepository {
     fun save(dataModel: DataModel): DataModel
@@ -56,13 +58,16 @@ class DataRepositoryImpl : DataRepository {
         val tableName = SchemaModel.generateTableName(tenantId, applicationId, dataModel.entityName)
 
         val dataJson = objectMapper.writeValueAsString(dataModel.data)
+        val jsonObject = PGobject()
+        jsonObject.setType("jsonb")
+        jsonObject.setValue(dataJson)
         val now = Timestamp.from(Instant.now())
 
         // Use JDBC connection for raw SQL with RETURNING clause
         AppContext.db.dataSource().connection.use { conn ->
             val sql = """
                 INSERT INTO $tableName (unique_identifier, entity_name, version_name, data, tenant_id, when_created, when_modified, version, schema_id, who_created, who_modified, application_id)
-                VALUES (?, ?, ?, ?::jsonb, ?, ?, ?, 1, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
                 RETURNING id, when_created, when_modified, version
             """.trimIndent()
 
@@ -70,17 +75,14 @@ class DataRepositoryImpl : DataRepository {
                 stmt.setString(1, dataModel.uniqueIdentifier)
                 stmt.setString(2, dataModel.entityName)
                 stmt.setString(3, dataModel.versionName)
-                stmt.setString(4, dataJson)
+                stmt.setObject(4, jsonObject)
                 stmt.setLong(5, tenantId)
                 stmt.setTimestamp(6, now)
                 stmt.setTimestamp(7, now)
                 stmt.setLong(8, dataModel.schemaId)
                 stmt.setString(9, CurrentUser.get().userId)
                 stmt.setString(10, CurrentUser.get().userId)
-                stmt.setLong(
-                    11,
-                    CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
-                )
+                stmt.setLong(11, applicationId)
 
                 val rs = stmt.executeQuery()
                 if (rs.next()) {
@@ -107,7 +109,7 @@ class DataRepositoryImpl : DataRepository {
                 SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
                 WHERE entity_name = :entityName 
                 AND id = :id
-                AND application_id = :appId
+                AND application_id = :applicationId
                 AND deleted = false
                 ORDER BY when_created DESC
                 LIMIT 1
@@ -118,7 +120,7 @@ class DataRepositoryImpl : DataRepository {
             .setRawSql(rawSql)
             .setParameter("entityName", entityName)
             .setParameter("id", id)
-            .setParameter("appId", applicationId)
+            .setParameter("applicationId", applicationId)
 
         return query.findOne()
     }
@@ -140,7 +142,7 @@ class DataRepositoryImpl : DataRepository {
                 SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
                 WHERE entity_name = :entityName 
                 AND version_name = :versionName
-                AND application_id = :appId
+                AND application_id = :applicationId
                 AND deleted = false
                 ORDER BY when_created DESC
             """.trimIndent()
@@ -148,7 +150,7 @@ class DataRepositoryImpl : DataRepository {
             """
                 SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
                 WHERE entity_name = :entityName
-                AND application_id = :appId
+                AND application_id = :applicationId
                 AND deleted = false
                 ORDER BY when_created DESC
             """.trimIndent()
@@ -163,7 +165,7 @@ class DataRepositoryImpl : DataRepository {
         if (versionName != null) {
             query.setParameter("versionName", versionName)
         }
-        query.setParameter("appId", applicationId)
+        query.setParameter("applicationId", applicationId)
 
         return query
             .setFirstRow((pageNo - 1) * pageSize)
@@ -177,11 +179,14 @@ class DataRepositoryImpl : DataRepository {
         val tableName = SchemaModel.generateTableName(tenantId, applicationId, dataModel.entityName)
 
         val dataJson = objectMapper.writeValueAsString(dataModel.data)
+        val jsonObject = PGobject()
+        jsonObject.setType("jsonb")
+        jsonObject.setValue(dataJson)
         val now = Timestamp.from(Instant.now())
         val sql = """
                 UPDATE $tableName 
-                SET data = cast(:data as jsonb), version_name = :versionName, when_modified = whenModified, version = version + 1, who_modified = :whoModified
-                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId and applicationId  = :appId
+                SET data = :data, version_name = :versionName, when_modified = whenModified, version = version + 1, who_modified = :whoModified
+                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId and applicationId  = :applicationId
                 RETURNING id, when_modified, version
             """.trimIndent()
 
@@ -189,7 +194,7 @@ class DataRepositoryImpl : DataRepository {
         AppContext.db.dataSource().connection.use { conn ->
 
             conn.prepareStatement(sql).use { stmt ->
-                stmt.setString(1, dataJson)
+                stmt.setObject(1, jsonObject)
                 stmt.setString(2, dataModel.versionName)
                 stmt.setTimestamp(3, now)
                 stmt.setString(4, dataModel.uniqueIdentifier)
@@ -288,24 +293,26 @@ class DataRepositoryImpl : DataRepository {
 
             val sql = """
                 DELETE FROM $tableName 
-                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId
+                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId AND application_id = :applicationId
             """.trimIndent()
             return AppContext.db.sqlUpdate(sql)
                 .setParameter("uniqueIdentifier", uniqueIdentifier)
                 .setParameter("entityName", entityName)
                 .setParameter("tenantId", tenantId)
+                .setParameter("applicationId", applicationId)
                 .execute() > 0
 
         } else {
 
             val sql = """
                 update $tableName set deleted = true, who_modified = :whoModified, when_modified = :whenModified 
-                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId
+                WHERE unique_identifier = :uniqueIdentifier AND entity_name = :entityName AND tenant_id = :tenantId AND application_id = :applicationId
             """.trimIndent()
             return AppContext.db.sqlUpdate(sql)
                 .setParameter("uniqueIdentifier", uniqueIdentifier)
                 .setParameter("entityName", entityName)
                 .setParameter("tenantId", tenantId)
+                .setParameter("applicationId", applicationId)
                 .setParameter("whoModified", CurrentUser.get().userId)
                 .setParameter("whenModified", Timestamp.from(Instant.now()))
                 .execute() > 0
