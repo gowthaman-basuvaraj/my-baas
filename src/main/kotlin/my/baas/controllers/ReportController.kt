@@ -13,7 +13,7 @@ import java.io.FileInputStream
 
 object ReportController {
 
-    private val reportService = ReportService()
+    private val reportService = ReportService
 
     @OpenApi(
         summary = "Create a new report",
@@ -64,7 +64,12 @@ object ReportController {
         methods = [HttpMethod.GET],
         queryParams = [
             OpenApiParam(name = "page", type = Int::class, description = "Page number (default: 1)", required = false),
-            OpenApiParam(name = "pageSize", type = Int::class, description = "Page size (default: 20)", required = false)
+            OpenApiParam(
+                name = "pageSize",
+                type = Int::class,
+                description = "Page size (default: 20)",
+                required = false
+            )
         ],
         responses = [
             OpenApiResponse("200", description = "Reports retrieved successfully")
@@ -318,7 +323,12 @@ object ReportController {
         ],
         queryParams = [
             OpenApiParam(name = "page", type = Int::class, description = "Page number (default: 1)", required = false),
-            OpenApiParam(name = "pageSize", type = Int::class, description = "Page size (default: 20)", required = false)
+            OpenApiParam(
+                name = "pageSize",
+                type = Int::class,
+                description = "Page size (default: 20)",
+                required = false
+            )
         ],
         responses = [
             OpenApiResponse("200", description = "Execution history retrieved successfully"),

@@ -23,10 +23,10 @@ data class ReportExecutionResult(
     val rowCount: Int = 0
 )
 
-class ReportService(
-    private val repository: ReportRepository = ReportRepositoryImpl(),
-    private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl()
-) {
+object ReportService{
+
+    private val repository: ReportRepository = ReportRepository,
+    private val executionRepository: ReportExecutionRepository = ReportExecutionRepository
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun createReport(report: ReportModel): ReportModel {

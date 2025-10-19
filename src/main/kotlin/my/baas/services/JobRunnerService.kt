@@ -31,7 +31,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 object JobRunnerService {
-    private val executionRepository: ReportExecutionRepository = ReportExecutionRepositoryImpl()
+    private val executionRepository: ReportExecutionRepository = ReportExecutionRepository
     private val logger = LoggerFactory.getLogger(javaClass)
     private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(reportConfig.maxConcurrentJobs)
 
