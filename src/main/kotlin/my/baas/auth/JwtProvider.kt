@@ -64,7 +64,7 @@ object JwtProvider {
         }
     }
 
-    private fun fetchAuthEndpointWellKnown(wellKnownUrl: String): OAuthWellKnown {
+    fun fetchAuthEndpointWellKnown(wellKnownUrl: String): OAuthWellKnown {
 
         return wellKnownCache.computeIfAbsent(wellKnownUrl) {
             AppContext.objectMapper.readValue(

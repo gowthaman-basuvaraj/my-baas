@@ -17,6 +17,11 @@ import java.util.*
 )
 interface AppConfig {
 
+
+    @Key("app.is_dev")
+    @Default("false")
+    fun isDev(): Boolean
+
     @Key("database.url")
     fun dbUrl(): String
 
@@ -28,6 +33,16 @@ interface AppConfig {
 
     @Key("auth.wellKnownUrl")
     fun wellKnownUrl(): String
+
+    @Key("auth.admin.client_realm")
+    @Default("")
+    fun adminAuthClientRealm(): String
+
+    @Key("auth.admin.client_id")
+    fun adminAuthClientId(): String
+
+    @Key("auth.admin.client_secret")
+    fun adminAuthClientSecret(): String
 
     @Key("redis.enabled")
     @Default("false")

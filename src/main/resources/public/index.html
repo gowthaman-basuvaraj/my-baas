@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/keycloak-js@26/dist/keycloak.min.js"></script>
+    <style>
+        :root {
+            --bs-body-bg: #ffffff;
+            --bs-body-color: #212529;
+            --bs-card-bg: #ffffff;
+            --bs-border-color: #dee2e6;
+            --bs-input-bg: #ffffff;
+            --bs-input-color: #212529;
+            --bs-table-bg: #ffffff;
+            --bs-table-striped-bg: #f8f9fa;
+            --bs-table-hover-bg: #f8f9fa;
+        }
+
+        [data-bs-theme="dark"] {
+            --bs-body-bg: #212529;
+            --bs-body-color: #dee2e6;
+            --bs-card-bg: #2c3034;
+            --bs-border-color: #495057;
+            --bs-input-bg: #2c3034;
+            --bs-input-color: #dee2e6;
+            --bs-table-bg: #2c3034;
+            --bs-table-striped-bg: #2c3034;
+            --bs-table-hover-bg: #383d42;
+        }
+
+        body {
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .card {
+            background-color: var(--bs-card-bg);
+            border-color: var(--bs-border-color);
+        }
+
+        .table {
+            background-color: var(--bs-table-bg);
+            color: var(--bs-body-color);
+        }
+
+        .table > :not(caption) > * > * {
+            background-color: var(--bs-table-bg);
+            color: var(--bs-body-color);
+        }
+
+        .table-hover > tbody > tr:hover {
+            background-color: var(--bs-table-hover-bg);
+        }
+
+        .form-control {
+            background-color: var(--bs-input-bg);
+            color: var(--bs-input-color);
+            border-color: var(--bs-border-color);
+        }
+
+        .form-control:focus {
+            background-color: var(--bs-input-bg);
+            color: var(--bs-input-color);
+        }
+
+        .modal-content {
+            background-color: var(--bs-card-bg);
+            color: var(--bs-body-color);
+        }
+
+        [data-bs-theme="dark"] .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- Loading Screen -->
+    <div v-if="authLoading" class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+        <div class="text-center">
+            <div class="spinner-border mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Initializing authentication...</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div v-if="!authLoading" class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Tenant Management</h1>
+            <div class="d-flex align-items-center gap-3">
+                    <span class="theme-toggle" @click="toggleTheme"
+                          :title="darkMode ? 'Switch to light mode' : 'Switch to dark mode'">
+                        {{ darkMode ? '☀️' : '🌙' }}
+                    </span>
+                <button v-if="authenticated" class="btn btn-outline-secondary" @click="handleLogout">Logout</button>
+            </div>
+        </div>
+
+        <div v-if="message.text" :class="['alert', message.type === 'error' ? 'alert-danger' : 'alert-success']"
+             role="alert">
+            {{ message.text }}
+        </div>
+
+        <div class="mb-3">
+            <button class="btn btn-primary" @click="openCreateModal">+ Create Tenant</button>
+        </div>
+
+        <div v-if="loading" class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div v-else class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Domain</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="tenant in tenants" :key="tenant.id">
+                    <td>{{ tenant.id }}</td>
+                    <td>{{ tenant.domain }}</td>
+                    <td>{{ tenant.name }}</td>
+                    <td>
+                                <span :class="['badge', tenant.isActive ? 'bg-success' : 'bg-secondary']">
+                                    {{ tenant.isActive ? 'Active' : 'Inactive' }}
+                                </span>
+                    </td>
+                    <td>{{ formatDate(tenant.whenCreated) }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary me-1" @click="editTenant(tenant.id)">Edit</button>
+                        <button class="btn btn-sm btn-danger" @click="deleteTenant(tenant.id)">Delete</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" :class="{ 'd-block': showModal }" tabindex="-1"
+         :style="{ display: showModal ? 'block' : 'none' }">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ isEdit ? 'Edit Tenant' : 'Create Tenant' }}</h5>
+                    <button type="button" class="btn-close" @click="closeModal"></button>
+                </div>
+
+                <form @submit.prevent="saveTenant">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Domain *</label>
+                            <input type="text" class="form-control" v-model="form.domain" required :disabled="isEdit">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Name *</label>
+                            <input type="text" class="form-control" v-model="form.name" required>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" v-model="form.isActive" id="active">
+                            <label class="form-check-label" for="active">Active</label>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">{{ isEdit ? 'Update' : 'Create' }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div v-if="showModal" class="modal-backdrop fade show"></div>
+</div>
+
+<script>
+    const {createApp} = Vue;
+
+    createApp({
+        data() {
+            return {
+                baseUrl: window.location.origin,
+                tenants: [],
+                loading: false,
+                showModal: false,
+                isEdit: false,
+                message: {text: '', type: ''},
+                form: this.getEmptyForm(),
+                // Auth related
+                authLoading: true,
+                authenticated: false,
+                authConfig: null,
+                keycloak: null,
+                accessToken: null,
+                refreshToken: null,
+                // Dark mode
+                darkMode: false
+            }
+        },
+        methods: {
+            async initAuth() {
+                try {
+                    // Get auth config from server
+                    const response = await fetch(`${this.baseUrl}/auth/init`);
+                    if (!response.ok) throw new Error('Failed to get auth config');
+
+                    this.authConfig = await response.json();
+
+                    // Initialize Keycloak
+                    this.keycloak = new Keycloak({
+                        url: this.authConfig.baseUrl,
+                        realm: this.authConfig.realm,
+                        clientId: this.authConfig.clientId
+                    });
+
+                    // Check if we have a code in URL (redirect from Keycloak)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const code = urlParams.get('code');
+
+                    if (code) {
+                        // Exchange code for token
+                        await this.exchangeCodeForToken(code);
+                        // Clean up URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    } else {
+                        // Check if we have tokens in localStorage
+                        const storedAccessToken = localStorage.getItem('accessToken');
+                        const storedRefreshToken = localStorage.getItem('refreshToken');
+
+                        if (storedAccessToken && storedRefreshToken) {
+                            this.accessToken = storedAccessToken;
+                            this.refreshToken = storedRefreshToken;
+                            this.authenticated = true;
+                            this.authLoading = false;
+                            await this.loadTenants();
+                        } else {
+                            // No tokens, redirect to login
+                            await this.redirectToLogin();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Auth initialization error:', error);
+                    this.showMessage('Authentication error: ' + error.message, 'error');
+                    this.authLoading = false;
+                }
+            },
+            async redirectToLogin() {
+                await this.keycloak.login()
+            },
+            async exchangeCodeForToken(code) {
+                try {
+                    const redirectUri = window.location.origin + window.location.pathname;
+                    const response = await fetch(`${this.baseUrl}/auth/token`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({code, redirectUri})
+                    });
+
+                    if (!response.ok) throw new Error('Failed to exchange token');
+
+                    const data = await response.json();
+                    this.accessToken = data.accessToken;
+                    this.refreshToken = data.refreshToken;
+
+                    // Store tokens
+                    localStorage.setItem('accessToken', data.accessToken);
+                    localStorage.setItem('refreshToken', data.refreshToken);
+
+                    this.authenticated = true;
+                    this.authLoading = false;
+                    await this.loadTenants();
+                } catch (error) {
+                    console.error('Token exchange error:', error);
+                    this.showMessage('Login failed: ' + error.message, 'error');
+                    await this.redirectToLogin();
+                }
+            },
+            async refreshAccessToken() {
+                try {
+                    const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({refreshToken: this.refreshToken})
+                    });
+
+                    if (!response.ok) {
+                        // Refresh failed, redirect to login
+                        this.handleLogout();
+                        return false;
+                    }
+
+                    const data = await response.json();
+                    this.accessToken = data.accessToken;
+                    this.refreshToken = data.refreshToken;
+
+                    localStorage.setItem('accessToken', data.accessToken);
+                    localStorage.setItem('refreshToken', data.refreshToken);
+
+                    return true;
+                } catch (error) {
+                    console.error('Token refresh error:', error);
+                    await this.handleLogout();
+                    return false;
+                }
+            },
+            async handleLogout() {
+                try {
+                    if (this.refreshToken) {
+                        await fetch(`${this.baseUrl}/auth/logout`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({refreshToken: this.refreshToken})
+                        });
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                } finally {
+                    // Clear tokens
+                    this.accessToken = null;
+                    this.refreshToken = null;
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    this.authenticated = false;
+                    await this.redirectToLogin();
+
+                }
+            },
+            getAuthHeaders() {
+                if (!this.accessToken) {
+                    return {};
+                }
+                return {
+                    'Authorization': `Bearer ${this.accessToken}`
+                };
+            },
+            async authenticatedFetch(url, options = {}) {
+                // Add auth headers
+                options.headers = {
+                    ...options.headers,
+                    ...this.getAuthHeaders()
+                };
+
+                let response = await fetch(url, options);
+
+                // If 401, try to refresh token
+                if (response.status === 401) {
+                    const refreshed = await this.refreshAccessToken();
+                    if (refreshed) {
+                        // Retry with new token
+                        options.headers = {
+                            ...options.headers,
+                            ...this.getAuthHeaders()
+                        };
+                        response = await fetch(url, options);
+                    }
+                }
+
+                return response;
+            },
+            getEmptyForm() {
+                return {
+                    domain: '',
+                    name: '',
+                    isActive: true,
+                };
+            },
+            async loadTenants() {
+                this.loading = true;
+                try {
+                    const response = await this.authenticatedFetch(`${this.baseUrl}/admin/tenants`);
+                    if (!response.ok) throw new Error('Failed to load tenants');
+                    this.tenants = await response.json();
+                } catch (error) {
+                    this.showMessage('Error loading tenants: ' + error.message, 'error');
+                } finally {
+                    this.loading = false;
+                }
+            },
+            openCreateModal() {
+                this.isEdit = false;
+                this.form = this.getEmptyForm();
+                this.showModal = true;
+            },
+            async editTenant(id) {
+                try {
+                    const response = await this.authenticatedFetch(`${this.baseUrl}/admin/tenants/${id}`);
+                    if (!response.ok) throw new Error('Failed to load tenant');
+                    const tenant = await response.json();
+
+                    this.form = {
+                        id: tenant.id,
+                        domain: tenant.domain,
+                        name: tenant.name,
+                        isActive: tenant.isActive,
+                    };
+
+
+
+                    this.isEdit = true;
+                    this.showModal = true;
+                } catch (error) {
+                    this.showMessage('Error loading tenant: ' + error.message, 'error');
+                }
+            },
+            async saveTenant() {
+                try {
+
+
+                    const url = this.isEdit
+                        ? `${this.baseUrl}/admin/tenants/${this.form.id}`
+                        : `${this.baseUrl}/admin/tenants`;
+
+                    const method = this.isEdit ? 'PUT' : 'POST';
+
+                    const body = this.isEdit ? {
+                        name: this.form.name,
+                        active: this.form.isActive,
+                    } : this.form;
+
+                    const response = await this.authenticatedFetch(url, {
+                        method,
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.text();
+                        throw new Error(error || 'Failed to save tenant');
+                    }
+
+                    this.showMessage(
+                        this.isEdit ? 'Tenant updated successfully' : 'Tenant created successfully',
+                        'success'
+                    );
+                    this.closeModal();
+                    await this.loadTenants();
+                } catch (error) {
+                    this.showMessage('Error saving tenant: ' + error.message, 'error');
+                }
+            },
+            async deleteTenant(id) {
+                if (!confirm('Are you sure you want to delete this tenant?')) return;
+
+                try {
+                    const response = await this.authenticatedFetch(`${this.baseUrl}/admin/tenants/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) throw new Error('Failed to delete tenant');
+
+                    this.showMessage('Tenant deleted successfully', 'success');
+                    await this.loadTenants();
+                } catch (error) {
+                    this.showMessage('Error deleting tenant: ' + error.message, 'error');
+                }
+            },
+            closeModal() {
+                this.showModal = false;
+                this.form = this.getEmptyForm();
+            },
+            showMessage(text, type) {
+                this.message = {text, type};
+                setTimeout(() => {
+                    this.message = {text: '', type: ''};
+                }, 5000);
+            },
+            formatDate(dateString) {
+                return new Date(dateString).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            },
+            initTheme() {
+                // Check for saved preference in localStorage
+                const savedTheme = localStorage.getItem('theme');
+
+                if (savedTheme) {
+                    // Use saved preference
+                    this.darkMode = savedTheme === 'dark';
+                } else {
+                    // Use device preference
+                    this.darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+
+                this.applyTheme();
+
+                // Listen for system theme changes
+                if (window.matchMedia) {
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                        // Only auto-switch if user hasn't set a manual preference
+                        if (!localStorage.getItem('theme')) {
+                            this.darkMode = e.matches;
+                            this.applyTheme();
+                        }
+                    });
+                }
+            },
+            applyTheme() {
+                if (this.darkMode) {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-bs-theme', 'light');
+                }
+            },
+            toggleTheme() {
+                this.darkMode = !this.darkMode;
+                this.applyTheme();
+                // Save user preference
+                localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
+            }
+        },
+        async mounted() {
+            // Initialize theme before auth to avoid flash
+            this.initTheme();
+
+            await this.initAuth();
+            // Start auto-refreshing stats after auth is complete
+            if (this.authenticated) {
+                this.startStatsAutoRefresh();
+            }
+        },
+        beforeUnmount() {
+            // Clean up the interval when component is destroyed
+            this.stopStatsAutoRefresh();
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

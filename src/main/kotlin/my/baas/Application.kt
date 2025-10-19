@@ -2,6 +2,7 @@ package my.baas
 
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
+import io.javalin.http.staticfiles.Location
 import io.javalin.json.JavalinJackson
 import my.baas.auth.AuthHandler
 import my.baas.auth.CurrentUser
@@ -28,7 +29,24 @@ fun main() {
     Javalin
         .create { config ->
             config.jsonMapper(JavalinJackson(AppContext.objectMapper))
+            config.bundledPlugins.enableCors { cors -> cors.addRule { it.anyHost() } }
+            config.staticFiles.enableWebjars()
+            if (AppContext.appConfig.isDev()) {
+                val currentDirectory = System.getProperty("user.dir")
+                config.staticFiles.add("${currentDirectory}/src/main/resources/public", Location.EXTERNAL)
+                logger.info("Running in dev mode, static files will be served from: ${currentDirectory}/src/main/resources/public")
+            } else {
+                config.staticFiles.add("/public", Location.CLASSPATH)
+                logger.info("Running in production mode, static files will be served from: /public")
+            }
             config.router.apiBuilder {
+                // Auth routes (public)
+                path("auth"){
+                    get("init", AuthController::getAuthInit)
+                    post("token", AuthController::exchangeToken)
+                    post("refresh", AuthController::refreshToken)
+                    post("logout", AuthController::logout)
+                }
                 // Admin APIs - for managing tenants
                 path("admin") {
                     before(AuthHandler.handleAdmin)
