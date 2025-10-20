@@ -9,7 +9,7 @@
 ### ============================================
 
 ### Validate payload against schema - Valid payload
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/v1/validate
+POST {{baseUrl}}/api/app/ecommerce/data/users/v1/validate
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -36,7 +36,7 @@ client.test("Valid payload validation passed", function() {
 ###
 
 ### Validate payload against schema - Invalid payload (format violation)
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/v1/validate
+POST {{baseUrl}}/api/app/ecommerce/data/users/v1/validate
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -58,7 +58,7 @@ client.test("Invalid payload validation failed", function() {
 ###
 
 ### Validate payload against schema - Invalid payload (minimum value violation)
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/v1/validate
+POST {{baseUrl}}/api/app/ecommerce/data/users/v1/validate
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -72,7 +72,7 @@ Host: {{tenantHost}}
 ###
 
 ### Validate against v2 schema
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/v2/validate
+POST {{baseUrl}}/api/app/ecommerce/data/users/v2/validate
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -97,7 +97,7 @@ Host: {{tenantHost}}
 ### ============================================
 
 ### Create a user data model
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/v1
+POST {{baseUrl}}/api/app/ecommerce/data/users/v1
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -125,7 +125,7 @@ client.test("User data created successfully", function() {
 ###
 
 ### Create another user for testing
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/v1
+POST {{baseUrl}}/api/app/ecommerce/data/users/v1
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -145,7 +145,7 @@ Host: {{tenantHost}}
 ###
 
 ### Create product data
-POST {{baseUrl}}/api/app/ecommerce-app/data/products/v1
+POST {{baseUrl}}/api/app/ecommerce/data/products/v1
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -161,22 +161,22 @@ Host: {{tenantHost}}
 
 ###
 
-### Get all users for ecommerce-app
-GET {{baseUrl}}/api/app/ecommerce-app/data/users
+### Get all users for ecommerce
+GET {{baseUrl}}/api/app/ecommerce/data/users
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 > {% 
 client.test("Users retrieved successfully", function() {
     client.assert(response.status === 200, "Expected status 200 - OK");
-    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should be an array or have content property");
+    client.assert(Array.isArray(response.body.list) || response.body.content !== undefined, "Response should be an array or have content property");
 });
 %}
 
 ###
 
-### Get all products for ecommerce-app
-GET {{baseUrl}}/api/app/ecommerce-app/data/products
+### Get all products for ecommerce
+GET {{baseUrl}}/api/app/ecommerce/data/products
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -184,7 +184,7 @@ Host: {{tenantHost}}
 
 ### Get user by unique identifier
 # Replace {uniqueIdentifier} with actual value from create response
-GET {{baseUrl}}/api/app/ecommerce-app/data/users/john.doe@example.com-1234567890
+GET {{baseUrl}}/api/app/ecommerce/data/users/john.doe@example.com-1234567890
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -192,7 +192,7 @@ Host: {{tenantHost}}
 
 ### Update user data model
 # Replace {uniqueIdentifier} with actual value
-PUT {{baseUrl}}/api/app/ecommerce-app/data/users/v1/john.doe@example.com-1234567890
+PUT {{baseUrl}}/api/app/ecommerce/data/users/v1/john.doe@example.com-1234567890
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -213,7 +213,7 @@ Host: {{tenantHost}}
 
 ### Patch user data model (partial update)
 # Replace {uniqueIdentifier} with actual value
-PATCH {{baseUrl}}/api/app/ecommerce-app/data/users/v1/john.doe@example.com-1234567890
+PATCH {{baseUrl}}/api/app/ecommerce/data/users/v1/john.doe@example.com-1234567890
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -233,7 +233,7 @@ Host: {{tenantHost}}
 ### ============================================
 
 ### Search users - Single filter (Greater Than)
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/search
+POST {{baseUrl}}/api/app/ecommerce/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -260,7 +260,7 @@ client.test("User search completed successfully", function() {
 ###
 
 ### Search users - Multiple filters (EQ and GE)
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/search
+POST {{baseUrl}}/api/app/ecommerce/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -285,7 +285,7 @@ Host: {{tenantHost}}
 ###
 
 ### Search users - String contains
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/search
+POST {{baseUrl}}/api/app/ecommerce/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -305,7 +305,7 @@ Host: {{tenantHost}}
 ###
 
 ### Search users - Array operations
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/search
+POST {{baseUrl}}/api/app/ecommerce/data/users/search
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -329,7 +329,7 @@ Host: {{tenantHost}}
 ### ============================================
 
 ### Create page view event
-POST {{baseUrl}}/api/app/analytics-app/data/events/v1
+POST {{baseUrl}}/api/app/analytics/data/events/v1
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -357,7 +357,7 @@ client.test("Event data created successfully", function() {
 ###
 
 ### Create purchase event
-POST {{baseUrl}}/api/app/analytics-app/data/events/v1
+POST {{baseUrl}}/api/app/analytics/data/events/v1
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -377,7 +377,7 @@ Host: {{tenantHost}}
 ###
 
 ### Create click event
-POST {{baseUrl}}/api/app/analytics-app/data/events/v1
+POST {{baseUrl}}/api/app/analytics/data/events/v1
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -395,15 +395,15 @@ Host: {{tenantHost}}
 
 ###
 
-### Get all events for analytics-app
-GET {{baseUrl}}/api/app/analytics-app/data/events
+### Get all events for analytics
+GET {{baseUrl}}/api/app/analytics/data/events
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 ###
 
 ### Search events by type
-POST {{baseUrl}}/api/app/analytics-app/data/events/search
+POST {{baseUrl}}/api/app/analytics/data/events/search
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -423,7 +423,7 @@ Host: {{tenantHost}}
 ###
 
 ### Search events by user
-POST {{baseUrl}}/api/app/analytics-app/data/events/search
+POST {{baseUrl}}/api/app/analytics/data/events/search
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -448,7 +448,7 @@ Host: {{tenantHost}}
 
 ### Migrate user data model to v2
 # Replace {uniqueIdentifier} with actual value
-POST {{baseUrl}}/api/app/ecommerce-app/data/users/v1/john.doe@example.com-1234567890/migrate
+POST {{baseUrl}}/api/app/ecommerce/data/users/v1/john.doe@example.com-1234567890/migrate
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -461,7 +461,7 @@ Host: {{tenantHost}}
 
 ### Delete user data model
 # Replace {uniqueIdentifier} with actual value
-DELETE {{baseUrl}}/api/app/ecommerce-app/data/users/v1/john.doe@example.com-1234567890
+DELETE {{baseUrl}}/api/app/ecommerce/data/users/v1/john.doe@example.com-1234567890
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -475,7 +475,7 @@ client.test("User data deleted successfully", function() {
 
 ### Delete event data model
 # Replace {uniqueIdentifier} with actual value
-DELETE {{baseUrl}}/api/app/analytics-app/data/events/v1/user123-session456-2023-12-01T10:30:00Z
+DELETE {{baseUrl}}/api/app/analytics/data/events/v1/user123-session456-2023-12-01T10:30:00Z
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -488,7 +488,7 @@ client.test("Event data deleted successfully", function() {
 ###
 
 ### Try to delete non-existent data model (should return 404)
-DELETE {{baseUrl}}/api/app/ecommerce-app/data/users/v1/non-existent-id
+DELETE {{baseUrl}}/api/app/ecommerce/data/users/v1/non-existent-id
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 

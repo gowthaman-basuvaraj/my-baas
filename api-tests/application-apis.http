@@ -5,7 +5,7 @@
 ### ============================================
 
 ### Create a new application - ecommerce
-POST {{baseUrl}}/api/applications
+POST {{baseUrl}}/api/apps
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -28,7 +28,7 @@ client.test("Ecommerce application created successfully", function() {
 ###
 
 ### Create another application - analytics
-POST {{baseUrl}}/api/applications
+POST {{baseUrl}}/api/apps
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -51,7 +51,7 @@ client.test("Analytics application created successfully", function() {
 ###
 
 ### Create third application - cms
-POST {{baseUrl}}/api/applications
+POST {{baseUrl}}/api/apps
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -74,7 +74,7 @@ client.test("CMS application created successfully", function() {
 ###
 
 ### Get all applications
-GET {{baseUrl}}/api/applications
+GET {{baseUrl}}/api/apps
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -165,7 +165,7 @@ client.test("Application deleted successfully", function() {
 ### ============================================
 
 ### Test creating application with duplicate name
-POST {{baseUrl}}/api/applications
+POST {{baseUrl}}/api/apps
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -185,7 +185,7 @@ client.test("Duplicate application name rejected", function() {
 ###
 
 ### Test creating application with invalid name
-POST {{baseUrl}}/api/applications
+POST {{baseUrl}}/api/apps
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}

@@ -25,8 +25,8 @@ object DataRepository {
             .columnMapping("entity_name", "entityName")
             .columnMapping("version_name", "versionName")
             .columnMapping("data", "data")
-            .columnMapping("tenant_id", "tenantId")
-            .columnMapping("schema_id", "schemaId")
+            .columnMapping("tenant_id", "tenant_id")
+            .columnMapping("schema_id", "schema_id")
             .columnMapping("when_created", "whenCreated")
             .columnMapping("when_modified", "whenModified")
             .columnMapping("who_created", "whoCreated")
@@ -53,8 +53,7 @@ object DataRepository {
                     eq("versionName", versionName)
                 }
             }
-            .eq("applicationId", CurrentUser.get().applicationId ?: throw BadRequestResponse())
-
+            .eq("application_id", CurrentUser.get().applicationId ?: throw BadRequestResponse())
             .eq("entityName", entityName)
             .setMaxRows(pageSize)
             .setFirstRow((pageNo - 1) * pageSize)

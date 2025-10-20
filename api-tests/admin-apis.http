@@ -12,7 +12,7 @@ Authorization: {{authToken}}
 {
   "id": "c6553120-601a-42e7-a4b9-35d4a1050d1c",
   "name": "Acme Corporation",
-  "domain": "localhost",
+  "domain": "127.0.0.1",
   "isActive": true,
   "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"],
   "config": {
@@ -118,7 +118,10 @@ Authorization: {{authToken}}
   "name": "Acme Corporation Updated",
   "domain": "127.0.0.1",
   "isActive": true,
-  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12", "127.0.0.1"]
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12", "127.0.0.1"],
+  "config": {
+    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
+  }
 }
 
 > {% 
@@ -133,7 +136,7 @@ client.test("Tenant updated successfully", function() {
 
 ### Activate tenant
 # Replace {id} with actual tenant ID
-POST {{baseUrl}}/admin/tenants/c6553120-601a-42e7-a4b9-35d4a1050d1c/activate
+POST {{baseUrl}}/admin/tenants/97f565ed-d56a-4460-a6e2-28a42ed2976e/activate
 Authorization: {{authToken}}
 
 > {% 
@@ -146,7 +149,7 @@ client.test("Tenant activated successfully", function() {
 
 ### Deactivate tenant
 # Replace {id} with actual tenant ID
-POST {{baseUrl}}/admin/tenants/c6553120-601a-42e7-a4b9-35d4a1050d1c/deactivate
+POST {{baseUrl}}/admin/tenants/97f565ed-d56a-4460-a6e2-28a42ed2976e/deactivate
 Authorization: {{authToken}}
 
 > {% 

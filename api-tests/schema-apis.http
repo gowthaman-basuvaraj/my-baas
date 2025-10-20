@@ -81,6 +81,7 @@ Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
+  "id": "14a8401b-c987-4455-8972-353687ebde71",
   "entityName": "users",
   "versionName": "v2",
   "jsonSchema": {
@@ -263,7 +264,7 @@ Host: {{tenantHost}}
 
 ### Get schema by ID
 # Replace {id} with actual schema ID from create response
-GET {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43
+GET {{baseUrl}}/api/app/ecommerce/schemas/14a8401b-c987-4455-8972-353687ebde71
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -279,7 +280,7 @@ client.test("Schema retrieved by ID successfully", function() {
 
 ### Update schema
 # Replace {id} with actual schema ID
-PUT {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43
+PUT {{baseUrl}}/api/app/ecommerce/schemas/14a8401b-c987-4455-8972-353687ebde71
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -315,7 +316,7 @@ Host: {{tenantHost}}
 
 ### Delete schema
 # Replace {id} with actual schema ID
-DELETE {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43
+DELETE {{baseUrl}}/api/app/ecommerce/schemas/14a8401b-c987-4455-8972-353687ebde71
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -329,7 +330,7 @@ client.test("Schema deleted successfully", function() {
 
 ### Delete schema with table drop
 # Replace {id} with actual schema ID
-DELETE {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43?dropTable=true
+DELETE {{baseUrl}}/api/app/ecommerce/schemas/14a8401b-c987-4455-8972-353687ebde71?dropTable=true
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
