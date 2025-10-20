@@ -185,9 +185,9 @@ object SchemaController : CrudHandler {
         // Drop the corresponding table only if explicitly requested
         val dropTable = ctx.queryParam("dropTable")?.toBoolean() ?: false
         if (dropTable) {
-            schema.tenantId.let { tenantId ->
+            schema.tenant.let { tenant ->
                 val applicationId = schema.application.id
-                TableManagementService.dropDataModelTable(tenantId, applicationId, schema.entityName)
+                TableManagementService.dropDataModelTable(tenant.id, applicationId, schema.entityName)
             }
         }
 

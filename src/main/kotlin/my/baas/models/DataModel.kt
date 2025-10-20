@@ -2,16 +2,18 @@ package my.baas.models
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import io.ebean.annotation.DbJsonB
-import io.ebean.annotation.Sql
+import io.ebean.annotation.Index
 import jakarta.persistence.Entity
 import jakarta.persistence.ManyToOne
-import my.baas.config.AppContext
 
 @Entity
-@Sql
+@Index(name = "data_model_unique_identifier", unique = true, columnNames = ["unique_identifier", "tenant_id", "application_id", "schema_id"])
 class DataModel(
 
-    var schemaId: Long,
+    @ManyToOne
+    @Index
+    @JsonIgnore
+    var schema: SchemaModel,
 
     @DbJsonB
     var data: Map<String, Any>,
@@ -26,6 +28,6 @@ class DataModel(
 
     @JsonIgnore
     fun loadSchema(): SchemaModel {
-        return AppContext.db.find(SchemaModel::class.java, schemaId)!!
+        return this.schema
     }
 }

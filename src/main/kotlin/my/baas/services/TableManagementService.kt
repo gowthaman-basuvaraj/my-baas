@@ -12,72 +12,17 @@ object TableManagementService {
     private val indexExecutor = Executors.newSingleThreadExecutor()
 
     fun createDataModelTable(schema: SchemaModel) {
-        val tenantId = CurrentUser.getTenant()?.id ?: throw IllegalStateException("No tenant in context")
-        val applicationId = schema.application.id ?: throw IllegalStateException("No application id for schema")
-        val tableName = schema.generateTableName(tenantId, applicationId)
-
-        try {
-            val sql = """
-                CREATE TABLE IF NOT EXISTS $tableName (
-                    id BIGSERIAL PRIMARY KEY,
-                    unique_identifier VARCHAR(255) NOT NULL,
-                    entity_name VARCHAR(255) NOT NULL,
-                    version_name VARCHAR(255) NOT NULL,
-                    data JSONB NOT NULL,
-                    tenant_id BIGINT NOT NULL,
-                    schema_id BIGINT NOT NULL,
-                    application_id BIGINT NOT NULL,
-                    when_created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    when_modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    who_created text NOT NULL,
-                    who_modified text NOT NULL,
-                    deleted boolean default false,
-                    version BIGINT NOT NULL DEFAULT 1,
-                    CONSTRAINT ${tableName}_unique_idx UNIQUE (unique_identifier, entity_name, tenant_id, application_id)
-                )
-            """.trimIndent()
-
-            AppContext.db.sqlUpdate(sql).execute()
-
-            // Create GIN index for JSONB data
-            val indexSql =
-                "CREATE INDEX IF NOT EXISTS ${tableName}_data_gin_idx ON $tableName USING GIN(data jsonb_path_ops)"
-            AppContext.db.sqlUpdate(indexSql).execute()
-
-            // Create an index on tenant_id for performance
-            val tenantIndexSql = "CREATE INDEX IF NOT EXISTS ${tableName}_tenant_idx ON $tableName (tenant_id)"
-            AppContext.db.sqlUpdate(tenantIndexSql).execute()
-
-            // Create an index on audit columns for performance
-            val auditIndexSql = "CREATE INDEX IF NOT EXISTS ${tableName}_audit_col_idx ON $tableName (when_created, who_created, when_modified, who_modified)"
-            AppContext.db.sqlUpdate(auditIndexSql).execute()
-
-            updateIndexes(schema, emptyList(), schema.indexedJsonPaths, tenantId)
-
-            logger.info("Created table [$tableName] with [${schema.indexedJsonPaths.size}] GIN indexes for entity [${schema.entityName}] and tenant [$tenantId]")
-
-        } catch (e: Exception) {
-            logger.error("Failed to create table [$tableName]", e)
-            throw RuntimeException("Failed to create data model table: ${e.message}", e)
-        }
+        //fixme: create partition
     }
 
     fun dropDataModelTable(tenantId: Long, applicationId: Long, entityName: String) {
-        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
-
-        try {
-            val sql = "DROP TABLE IF EXISTS $tableName CASCADE"
-            AppContext.db.sqlUpdate(sql).execute()
-            logger.info("Dropped table [$tableName] for entity [$entityName] and tenant [$tenantId]")
-        } catch (e: Exception) {
-            logger.error("Failed to drop table [$tableName]", e)
-            throw RuntimeException("Failed to drop data model table: ${e.message}", e)
-        }
+       //fixme: detach partition
     }
 
     fun updateIndexes(schema: SchemaModel, oldIndexedPaths: List<String>, newIndexedPaths: List<String>, tenantId: Long) {
-        val applicationId = schema.application.id ?: throw IllegalStateException("No application id for schema")
-        val tableName = schema.generateTableName(tenantId, applicationId)
+        val applicationId = schema.application.id
+        val tableName = "data_model"
+        //fixme: add a where clause for index creation and make it concurrent
 
         // Calculate differences
         val removedPaths = oldIndexedPaths - newIndexedPaths.toSet()
@@ -167,10 +112,10 @@ object TableManagementService {
         }
 
         // Use JsonPath's internal path structure to build PostgreSQL query
-        return buildPostgreSQLPath(jsonPath)
+        return buildPostgresPath(jsonPath)
     }
 
-    private fun buildPostgreSQLPath(originalPath: String): String {
+    private fun buildPostgresPath(originalPath: String): String {
         // For PostgreSQL JSONB queries, we need to convert JsonPath to -> operator chain
         // Handle common patterns:
 

@@ -15,7 +15,6 @@ import my.baas.services.RedisEventPublisher
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("my.baas.Application")
-private val dataModelService = DataModelService()
 
 fun main() {
     logger.info("Starting MyBaaS application...")
@@ -93,7 +92,7 @@ fun main() {
                                 // Set entity context
                                 val entityName = ctx.pathParam("entityName")
                                 CurrentUser.setEntityContext(entityName, null)
-                                dataModelService.validateSchemaExistsForEntity(entityName)
+                                DataModelService.validateSchemaExistsForEntity(entityName)
                             }
                             post("search", DataModelController::search)
                             get(DataModelController::getAll)
@@ -103,7 +102,7 @@ fun main() {
                                     val entityName = ctx.pathParam("entityName")
                                     CurrentUser.setEntityContext(entityName, versionName)
                                     if(!ctx.path().endsWith("/search")) {
-                                        dataModelService.validateSchemaExistsForEntityAndVersion(
+                                        DataModelService.validateSchemaExistsForEntityAndVersion(
                                             entityName,
                                             versionName
                                         )

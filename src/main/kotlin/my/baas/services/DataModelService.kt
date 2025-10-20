@@ -14,7 +14,6 @@ import my.baas.models.AuditAction
 import my.baas.models.DataModel
 import my.baas.models.SchemaModel
 import my.baas.repositories.DataRepository
-import my.baas.repositories.DataRepositoryImpl
 import org.slf4j.LoggerFactory
 import java.text.SimpleDateFormat
 import java.util.*
@@ -32,13 +31,13 @@ data class ValidationError(
     val type: String
 )
 
-class DataModelService(
-    private val repository: DataRepository = DataRepositoryImpl(),
-    private val jsExecutionService: JavaScriptExecutionService = JavaScriptExecutionService,
-    private val eventManager: WebSocketEventManager = WebSocketEventManager,
-    private val redisPublisher: RedisEventPublisher = RedisEventPublisher
-) {
+object DataModelService {
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    private val repository: DataRepository = DataRepository
+    private val jsExecutionService: JavaScriptExecutionService = JavaScriptExecutionService
+    private val eventManager: WebSocketEventManager = WebSocketEventManager
+    private val redisPublisher: RedisEventPublisher = RedisEventPublisher
     private val schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7)
 
     fun create(entityName: String, versionName: String, data: Map<String, Any>): DataModel {
@@ -46,7 +45,7 @@ class DataModelService(
         val uniqueIdentifier = generateUniqueIdentifier(schema, data, entityName, versionName)
 
         val dataModel = DataModel(
-            schemaId = schema.id,
+            schema = schema,
             data = data,
             uniqueIdentifier = uniqueIdentifier,
             entityName = entityName,
@@ -109,7 +108,7 @@ class DataModelService(
         val schema = loadSchemaByEntityAndVersion(entityName, versionName)
         val oldData = existingDataModel.data
 
-        existingDataModel.schemaId = schema.id
+        existingDataModel.schema = schema
         existingDataModel.data = data
         existingDataModel.entityName = entityName
         existingDataModel.versionName = versionName
@@ -152,7 +151,7 @@ class DataModelService(
         // Merge existing data with patch data
         val mergedData = deepMergeData(existingDataModel.data, patchData)
 
-        existingDataModel.schemaId = schema.id
+        existingDataModel.schema = schema
         existingDataModel.data = mergedData
         existingDataModel.entityName = entityName
         existingDataModel.versionName = versionName
@@ -187,7 +186,7 @@ class DataModelService(
         // Execute beforeDelete hook
         jsExecutionService.executeLifecycleScript(dataModel.loadSchema(), LifecycleEvent.BEFORE_DELETE, dataModel)
 
-        val deleted = repository.deleteByUniqueIdentifier(entityName, uniqueIdentifier)
+        val deleted = repository.deleteByUniqueIdentifier(entityName, uniqueIdentifier, reallyDelete = false)
 
         if (deleted) {
             // Execute afterDelete hook
@@ -285,7 +284,7 @@ class DataModelService(
         }
 
         // Update the data model with new version and potentially modified data
-        existingDataModel.schemaId = destinationSchema.id
+        existingDataModel.schema = destinationSchema
         existingDataModel.versionName = destinationVersion
         existingDataModel.data = migratedData
 
@@ -347,7 +346,12 @@ class DataModelService(
             ?: throw NotFoundResponse("Schema not found for entity: '$entityName', version: '$versionName'")
     }
 
-    private fun generateUniqueIdentifier(schema: SchemaModel, data: Map<String, Any>, entityName: String, versionName: String): String {
+    private fun generateUniqueIdentifier(
+        schema: SchemaModel,
+        data: Map<String, Any>,
+        entityName: String,
+        versionName: String
+    ): String {
 
         // Replace system placeholders
         var identifier = schema.uniqueIdentifierFormatter

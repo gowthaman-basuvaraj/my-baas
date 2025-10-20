@@ -2,6 +2,7 @@ package my.baas.models
 
 import io.ebean.annotation.Index
 import io.ebean.annotation.TenantId
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.MappedSuperclass
 import jakarta.persistence.PrePersist
 import my.baas.auth.CurrentUser
@@ -11,11 +12,12 @@ abstract class BaseTenantModel : BaseModel() {
     
     @TenantId
     @Index
-    var tenantId: Long = 0
+    @ManyToOne
+    lateinit var tenant: TenantModel
 
     @PrePersist
     fun setTenantId() {
-        tenantId = CurrentUser.getTenant()?.id ?: throw IllegalStateException("No tenant in context")
+        tenant = CurrentUser.getTenant() ?: throw IllegalStateException("No tenant in context")
     }
 
 }

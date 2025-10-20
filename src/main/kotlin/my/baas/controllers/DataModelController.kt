@@ -11,7 +11,7 @@ data class MigrateRequest(val destinationVersion: String)
 
 object DataModelController {
 
-    private val dataModelService = DataModelService()
+    private val dataModelService = DataModelService
 
     @OpenApi(
         summary = "Create a new data model",
