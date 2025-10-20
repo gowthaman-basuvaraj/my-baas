@@ -200,23 +200,21 @@ object TableManagementService {
         var inBrackets = false
 
         for (char in path) {
-            when {
-                char == '.' && !inBrackets -> {
+            when (char) {
+                '.' if !inBrackets -> {
                     if (current.isNotEmpty()) {
                         parts.add("'$current'")
                         current = ""
                     }
                 }
-
-                char == '[' -> {
+                '[' -> {
                     if (current.isNotEmpty()) {
                         parts.add("'$current'")
                         current = ""
                     }
                     inBrackets = true
                 }
-
-                char == ']' -> {
+                ']' -> {
                     if (current.isNotEmpty()) {
                         // Array index should be unquoted (numeric)
                         parts.add(current)
@@ -224,7 +222,6 @@ object TableManagementService {
                     }
                     inBrackets = false
                 }
-
                 else -> {
                     current += char
                 }

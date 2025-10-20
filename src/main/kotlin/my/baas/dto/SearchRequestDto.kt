@@ -23,8 +23,8 @@ enum class FilterOperator {
     GE,         // greater than or equal
     IN,         // in list
     NOT_IN,     // not in list
-    
-    // PostgreSQL JSONB operators
+
+    ARRAY_CONTAINS, // ?, Array Contains
     CONTAINS,       // @>
     CONTAINED_BY,   // <@
     HAS_KEY,        // ?
@@ -32,42 +32,7 @@ enum class FilterOperator {
     HAS_ALL_KEYS,   // ?&
     PATH_EXISTS,    // @?
     PATH_MATCH;     // @@
-    
-    fun getOperatorSymbol(): String {
-        return when (this) {
-            EQ -> "="
-            NE -> "!="
-            LT -> "<"
-            LE -> "<="
-            GT -> ">"
-            GE -> ">="
-            IN -> "IN"
-            NOT_IN -> "NOT IN"
-            CONTAINS -> "@>"
-            CONTAINED_BY -> "<@"
-            HAS_KEY -> "?"
-            HAS_ANY_KEYS -> "?|"
-            HAS_ALL_KEYS -> "?&"
-            PATH_EXISTS -> "@?"
-            PATH_MATCH -> "@@"
-        }
-    }
-    
-    fun requiresNumericCasting(): Boolean {
-        return this in setOf(LT, LE, GT, GE)
-    }
-    
-    fun isListOperator(): Boolean {
-        return this in setOf(IN, NOT_IN, HAS_ANY_KEYS, HAS_ALL_KEYS)
-    }
-    
-    fun requiresJsonSerialization(): Boolean {
-        return this in setOf(CONTAINS, CONTAINED_BY)
-    }
-    
-    fun usesDataRoot(): Boolean {
-        return this in setOf(PATH_EXISTS, PATH_MATCH)
-    }
+
 }
 
 data class SearchRequestDto(

@@ -1,6 +1,7 @@
 package my.baas.repositories
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.ebean.ExpressionList
 import io.ebean.PagedList
 import io.ebean.RawSql
 import io.ebean.RawSqlBuilder
@@ -15,24 +16,7 @@ import my.baas.services.TableManagementService.parseJsonPathToChain
 import org.slf4j.LoggerFactory
 
 object DataRepository {
-    private val objectMapper = jacksonObjectMapper()
-    private val logger = LoggerFactory.getLogger("DataRepo")
 
-    private fun createDataModelRawSql(sql: String): RawSql {
-        return RawSqlBuilder.parse(sql)
-            .columnMapping("id", "id")
-            .columnMapping("unique_identifier", "uniqueIdentifier")
-            .columnMapping("entity_name", "entityName")
-            .columnMapping("version_name", "versionName")
-            .columnMapping("data", "data")
-            .columnMapping("tenant_id", "tenant_id")
-            .columnMapping("schema_id", "schema_id")
-            .columnMapping("when_created", "whenCreated")
-            .columnMapping("when_modified", "whenModified")
-            .columnMapping("who_created", "whoCreated")
-            .columnMapping("who_modified", "whoModified")
-            .create()
-    }
 
     fun save(dataModel: DataModel): DataModel {
         AppContext.db.insert(dataModel)
@@ -104,133 +88,54 @@ object DataRepository {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
         val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
-        val tableName = "data_model"
 
         if (filters.isEmpty()) {
             return findAllByEntityName(entityName, null, pageNo, pageSize)
         }
 
+        val q = AppContext.db.find(DataModel::class.java)
+            .where()
+            .eq("entityName", entityName)
+            .eq("tenant_id", tenantId)
+            .eq("application_id", applicationId)
+
         // Build filter conditions functionally
-        val filterConditions = filters.mapIndexed { index, filter ->
-            buildFilterCondition(filter, index)
+        filters.forEach { filter ->
+            buildFilterCondition(filter, q)
         }
 
-        // Base conditions
-        val baseConditions = listOf(
-            "entity_name = :entityName" to mapOf("entityName" to entityName),
-            "tenant_id = :tenantId" to mapOf("tenantId" to tenantId),
-            "application_id = :applicationId" to mapOf("applicationId" to applicationId)
-        )
 
-        // Combine all conditions
-        val allConditions = baseConditions + filterConditions
-        val whereConditions = allConditions.map { it.first }
-        val allParameters = allConditions.flatMap { it.second.toList() }.toMap()
-
-        val sql = """
-            SELECT id, data, unique_identifier, entity_name, version_name, tenant_id, when_created, when_modified, who_created, who_modified, schema_id FROM $tableName 
-            WHERE ${whereConditions.joinToString(" AND ")}
-            ORDER BY when_created DESC
-        """.trimIndent()
-
-        logger.warn("Constructed Query [$sql] from $filters")
-
-        val rawSql = createDataModelRawSql(sql)
-
-        val query = AppContext.db.find(DataModel::class.java)
-            .setRawSql(rawSql)
-
-        // Set all parameters functionally
-        allParameters.forEach { (key, value) ->
-            query.setParameter(key, value)
-        }
-
-        return query
+        return q
             .setFirstRow((pageNo - 1) * pageSize)
             .setMaxRows(pageSize)
             .findPagedList()
     }
 
-    private fun buildFilterCondition(filter: FilterDto, index: Int): Pair<String, Map<String, Any>> {
-        val paramKey = "filter$index"
-        val operator = filter.operator.getOperatorSymbol()
+    private fun buildFilterCondition(filter: FilterDto, q: ExpressionList<DataModel>) {
+        val castType = if (filter.value is Number) "numeric" else "text"
+        val jsonPath = parseJsonPathToChain(filter.jsonPath)
+        val jsonPathChain = "($jsonPath)::$castType"
 
-        return when {
-            filter.operator.isListOperator() -> {
-                buildListOperatorCondition(filter, paramKey, operator)
-            }
-
-            filter.operator.requiresJsonSerialization() -> {
-                buildJsonOperatorCondition(filter, paramKey, operator)
-            }
-
-            filter.operator.usesDataRoot() -> {
-                buildDataRootOperatorCondition(filter, paramKey, operator)
-            }
-
-            filter.operator == FilterOperator.HAS_KEY -> {
-                val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
-                "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
-            }
-
-            else -> {
-                buildSimpleOperatorCondition(filter, paramKey, operator)
-            }
+        when(filter.operator){
+            FilterOperator.EQ -> q.raw("$jsonPathChain = ?", filter.value)
+            FilterOperator.NE -> q.raw("$jsonPathChain <> ?", filter.value)
+            FilterOperator.LT -> q.raw("$jsonPathChain < ?", filter.value)
+            FilterOperator.LE -> q.raw("$jsonPathChain <= ?", filter.value)
+            FilterOperator.GT -> q.raw("$jsonPathChain > ?", filter.value)
+            FilterOperator.GE -> q.raw("$jsonPathChain >= ?", filter.value)
+            FilterOperator.IN -> q.`in`(jsonPathChain, filter.value)
+            FilterOperator.NOT_IN -> q.notIn(jsonPathChain, filter.value)
+            FilterOperator.ARRAY_CONTAINS -> TODO()
+            FilterOperator.CONTAINS -> TODO()
+            FilterOperator.CONTAINED_BY -> TODO()
+            FilterOperator.HAS_KEY -> q.raw("$jsonPathChain ?", filter.value) //fixme
+            FilterOperator.HAS_ANY_KEYS ->  q.raw("$jsonPathChain ?|", filter.value) //fixme
+            FilterOperator.HAS_ALL_KEYS -> q.raw("$jsonPathChain ?&", filter.value) //fixme
+            FilterOperator.PATH_EXISTS -> q.jsonExists("data", jsonPathChain)
+            FilterOperator.PATH_MATCH -> q.raw("$jsonPathChain @@ ?", filter.value)
         }
+
     }
-
-    private fun buildSimpleOperatorCondition(
-        filter: FilterDto,
-        paramKey: String,
-        operator: String
-    ): Pair<String, Map<String, Any>> {
-        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
-        val castType = if (filter.operator.requiresNumericCasting()) "numeric" else "text"
-        return "($jsonPathChain)::$castType $operator :$paramKey" to mapOf(paramKey to filter.value)
-    }
-
-    private fun buildListOperatorCondition(
-        filter: FilterDto,
-        paramKey: String,
-        operator: String
-    ): Pair<String, Map<String, Any>> {
-        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
-        val values = filter.getListValue()
-
-        return when (filter.operator) {
-            FilterOperator.IN, FilterOperator.NOT_IN -> {
-                val placeholders = values.mapIndexed { i, _ -> ":${paramKey}_$i" }.joinToString(",")
-                val parameters = values.mapIndexed { i, value -> "${paramKey}_$i" to (value ?: "") }.toMap()
-                "($jsonPathChain)::text $operator ($placeholders)" to parameters
-            }
-
-            FilterOperator.HAS_ANY_KEYS, FilterOperator.HAS_ALL_KEYS -> {
-                val keys = values.map { it.toString() }.toTypedArray()
-                "$jsonPathChain $operator :$paramKey" to mapOf(paramKey to keys)
-            }
-
-            else -> throw IllegalArgumentException("Unsupported list operator: ${filter.operator}")
-        }
-    }
-
-    private fun buildJsonOperatorCondition(
-        filter: FilterDto,
-        paramKey: String,
-        operator: String
-    ): Pair<String, Map<String, Any>> {
-        val jsonPathChain = parseJsonPathToChain(filter.jsonPath)
-        val serializedValue = objectMapper.writeValueAsString(filter.value)
-        return "$jsonPathChain $operator cast(:$paramKey as jsonb)" to mapOf(paramKey to serializedValue)
-    }
-
-    private fun buildDataRootOperatorCondition(
-        filter: FilterDto,
-        paramKey: String,
-        operator: String
-    ): Pair<String, Map<String, Any>> {
-        return "data $operator :$paramKey" to mapOf(paramKey to filter.value.toString())
-    }
-
     fun findSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel? {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
