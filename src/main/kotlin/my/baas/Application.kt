@@ -2,6 +2,7 @@ package my.baas
 
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
+import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
 import io.javalin.json.JavalinJackson
 import my.baas.auth.AuthHandler
@@ -67,23 +68,20 @@ fun main() {
                 path("api") {
                     before(AuthHandler.handle)
                     // Application management
-                    crud("applications/{id}", ApplicationController)
+                    crud("apps/{id}", ApplicationController)
                     // Application-scoped schemas
-                    path("applications/{applicationName}") {
+                    path("app/{applicationName}") {
                         before { ctx ->
                             // Set application context from path
                             val applicationName = ctx.pathParam("applicationName")
-                            val tenantId = CurrentUser.getTenant()?.id
-                            if (tenantId != null) {
-                                val application = AppContext.db.find(ApplicationModel::class.java)
-                                    .where()
-                                    .eq("applicationName", applicationName)
-                                    .eq("tenantId", tenantId)
-                                    .findOne()
-                                if (application != null) {
-                                    CurrentUser.setApplicationContext(application.id, application.applicationName)
-                                }
-                            }
+                            val tenantId = CurrentUser.getTenant()?.id ?: throw UnauthorizedResponse("No tenant in context")
+                            val application = AppContext.db.find(ApplicationModel::class.java)
+                                .where()
+                                .eq("applicationName", applicationName)
+                                .eq("isActive", true)
+                                .eq("tenant_id", tenantId)
+                                .findOne() ?: throw UnauthorizedResponse("Application not found or Application Not Active")
+                            CurrentUser.setApplicationContext(application.id, application.applicationName)
                         }
                         crud("schemas/{id}", SchemaController)
                         // Application-scoped data endpoints

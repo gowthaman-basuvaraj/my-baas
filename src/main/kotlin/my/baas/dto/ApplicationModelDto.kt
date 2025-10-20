@@ -4,6 +4,7 @@ import my.baas.models.ApplicationModel
 import java.util.UUID
 
 data class ApplicationModelCreateDto(
+    val id: UUID? = null,
     val applicationName: String,
     val description: String? = null,
     val isActive: Boolean = true
@@ -13,9 +14,16 @@ data class ApplicationModelCreateDto(
             applicationName = applicationName,
             description = description,
             isActive = isActive
-        )
+        ).apply {
+            this.id = this@ApplicationModelCreateDto.id ?: UUID.randomUUID()
+        }
     }
 }
+data class ApplicationModelUpdateDto(
+    val id: UUID? = null,
+    val description: String? = null,
+    val isActive: Boolean = true
+)
 
 data class ApplicationModelViewDto(
     val id: UUID?,

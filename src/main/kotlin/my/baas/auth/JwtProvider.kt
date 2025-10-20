@@ -32,7 +32,7 @@ object JwtProvider {
     private val jwksCache: MutableMap<String, List<JsonWebKey>> = makeCache("jwksCache")
 
     fun verify(token: String, wellKnownUrl: String): JwtClaims {
-        logger.info("Verifying JWT token: $token, with wellKnownUrl: $wellKnownUrl")
+        logger.debug("Verifying JWT token: $token, with wellKnownUrl: $wellKnownUrl")
         val jwksUri = fetchAuthEndpointWellKnown(wellKnownUrl)
 
         // Create a JWKS resolver

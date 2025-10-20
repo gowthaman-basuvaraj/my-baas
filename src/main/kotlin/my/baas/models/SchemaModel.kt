@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated
 import my.baas.annotations.GenerateDto
 import my.baas.services.LifecycleEvent
 import org.apache.commons.lang3.RandomStringUtils
+import org.slf4j.LoggerFactory
 import java.util.UUID
 
 
@@ -50,10 +51,18 @@ class SchemaModel(
 ) : BaseAppModel() {
     @JsonIgnore
     fun generateTableName(suffix: String): String {
-        return "data_model_${uniqueId}_${tenant.name.trim()}_${application.applicationName.trim()}_${entityName.trim()}_$suffix"
+        val tbl =  "data_${uniqueId}_${tenant.name.trim()}_${application.applicationName.trim()}_${entityName.trim()}_$suffix"
             .lowercase()
             .replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
             .replace(Regex("_{2,}"), "_")
+            .trimEnd('_','-')
+
+        logger.info("Generated table name: $tbl")
+        return "\"$tbl\""
+    }
+
+    companion object{
+        private val logger = LoggerFactory.getLogger(SchemaModel::class.java)
     }
 
 }

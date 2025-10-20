@@ -4,13 +4,14 @@
 ### Each application can define and manage its own schemas
 ### ============================================
 
-### Create a new schema for ecommerce-app
-POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+### Create a new schema for ecommerce
+POST {{baseUrl}}/api/app/ecommerce/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
+  "id": "83dd1390-2f89-4d83-b183-8f32bd538d43",
   "entityName": "users",
   "versionName": "v1",
   "jsonSchema": {
@@ -74,7 +75,7 @@ client.test("Users schema v1 created successfully", function() {
 ###
 
 ### Create schema v2 for migration testing
-POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+POST {{baseUrl}}/api/app/ecommerce/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -138,8 +139,8 @@ Host: {{tenantHost}}
 
 ###
 
-### Create schema for analytics-app
-POST {{baseUrl}}/api/applications/analytics-app/schemas
+### Create schema for analytics
+POST {{baseUrl}}/api/app/analytics/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -190,8 +191,8 @@ client.test("Analytics events schema created successfully", function() {
 
 ###
 
-### Create products schema for ecommerce-app
-POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+### Create products schema for ecommerce
+POST {{baseUrl}}/api/app/ecommerce/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -239,8 +240,8 @@ Host: {{tenantHost}}
 
 ###
 
-### Get all schemas for ecommerce-app
-GET {{baseUrl}}/api/applications/ecommerce-app/schemas
+### Get all schemas for ecommerce
+GET {{baseUrl}}/api/app/ecommerce/schemas
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -253,8 +254,8 @@ client.test("Ecommerce schemas retrieved successfully", function() {
 
 ###
 
-### Get all schemas for analytics-app
-GET {{baseUrl}}/api/applications/analytics-app/schemas
+### Get all schemas for analytics
+GET {{baseUrl}}/api/app/analytics/schemas
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -262,7 +263,7 @@ Host: {{tenantHost}}
 
 ### Get schema by ID
 # Replace {id} with actual schema ID from create response
-GET {{baseUrl}}/api/applications/ecommerce-app/schemas/1
+GET {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -278,7 +279,7 @@ client.test("Schema retrieved by ID successfully", function() {
 
 ### Update schema
 # Replace {id} with actual schema ID
-PUT {{baseUrl}}/api/applications/ecommerce-app/schemas/1
+PUT {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -314,7 +315,7 @@ Host: {{tenantHost}}
 
 ### Delete schema
 # Replace {id} with actual schema ID
-DELETE {{baseUrl}}/api/applications/ecommerce-app/schemas/1
+DELETE {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -328,14 +329,14 @@ client.test("Schema deleted successfully", function() {
 
 ### Delete schema with table drop
 # Replace {id} with actual schema ID
-DELETE {{baseUrl}}/api/applications/ecommerce-app/schemas/1?dropTable=true
+DELETE {{baseUrl}}/api/app/ecommerce/schemas/83dd1390-2f89-4d83-b183-8f32bd538d43?dropTable=true
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 ###
 
 ### Create schema with validation disabled
-POST {{baseUrl}}/api/applications/ecommerce-app/schemas
+POST {{baseUrl}}/api/app/ecommerce/schemas
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
@@ -359,14 +360,14 @@ Host: {{tenantHost}}
 ### ============================================
 
 ### Get JSON schema for entity and version
-GET {{baseUrl}}/api/applications/ecommerce-app/data/users/v1/schema
+GET {{baseUrl}}/api/app/ecommerce/data/users/v1/schema
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 ###
 
 ### Get JSON schema for analytics events
-GET {{baseUrl}}/api/applications/analytics-app/data/events/v1/schema
+GET {{baseUrl}}/api/app/analytics/data/events/v1/schema
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 

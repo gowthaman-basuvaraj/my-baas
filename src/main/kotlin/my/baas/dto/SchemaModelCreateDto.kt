@@ -2,12 +2,14 @@ package my.baas.dto
 
 import my.baas.models.SchemaModel
 import my.baas.services.LifecycleEvent
+import java.util.UUID
 
 /**
  * DTO for creating a new SchemaModel
  * Generated from SchemaModel, excluding internal/system fields
  */
 data class SchemaModelCreateDto(
+    val id: UUID? = null,
     val entityName: String,
     val jsonSchema: Map<String, Any>,
     val versionName: String,
@@ -25,6 +27,8 @@ data class SchemaModelCreateDto(
             indexedJsonPaths = this.indexedJsonPaths,
             lifecycleScripts = this.lifecycleScripts,
             isValidationEnabled = this.isValidationEnabled
-        )
+        ).apply {
+            this.id = this@SchemaModelCreateDto.id ?: UUID.randomUUID()
+        }
     }
 }

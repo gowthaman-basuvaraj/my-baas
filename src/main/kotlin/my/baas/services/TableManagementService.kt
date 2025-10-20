@@ -33,26 +33,37 @@ object TableManagementService {
 
 
         if (schema.partitionBy == PartitionBy.MONTH) {
-            val nextMonth = LocalDate.now()
+            val nextMonthDate = LocalDate.now()
                 .plusMonths(1)
                 .withDayOfMonth(1)
+
+            val nextMonthSuffix = nextMonthDate
                 .format(DateTimeFormatter.ofPattern("yyyy-MM"))
+
+            val nextMonthTimeFmt = nextMonthDate
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
             AppContext.db.sqlUpdate(
                 """
-            CREATE TABLE ${schema.generateTableName(nextMonth)} PARTITION OF data_model
-            FOR VALUES FROM ('$tenantId','$applicationId', '$schemaId', '$now') TO ('$tenantId','$applicationId', '$schemaId', '$nextMonth');
+            CREATE TABLE ${schema.generateTableName(nextMonthSuffix)} PARTITION OF data_model
+            FOR VALUES FROM ('$tenantId','$applicationId', '$schemaId', '$now') TO ('$tenantId','$applicationId', '$schemaId', '$nextMonthTimeFmt');
             """
             ).execute()
         } else {
-            val nextYear = LocalDate.now().plusYears(1)
+            val nextYearDt = LocalDate.now().plusYears(1)
                 .withDayOfMonth(1)
                 .withMonth(1)
+
+            val nextYearSuffix = nextYearDt
                 .format(DateTimeFormatter.ofPattern("yyyy"))
+
+            val nextYearTimeFmt = nextYearDt
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+
             AppContext.db.sqlUpdate(
                 """
-            CREATE TABLE ${schema.generateTableName(nextYear)} PARTITION OF data_model
-            FOR VALUES FROM ('$tenantId','$applicationId', '$schemaId', '$now') TO ('$tenantId','$applicationId', '$schemaId', '$nextYear');
+            CREATE TABLE ${schema.generateTableName(nextYearSuffix)} PARTITION OF data_model
+            FOR VALUES FROM ('$tenantId','$applicationId', '$schemaId', '$now') TO ('$tenantId','$applicationId', '$schemaId', '$nextYearTimeFmt');
             """
             ).execute()
         }

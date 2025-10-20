@@ -11,7 +11,8 @@ Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
-  "applicationName": "ecommerce-app",
+  "id": "3853f223-8a11-4c0e-a625-9d44687f5cfc",
+  "applicationName": "ecommerce",
   "description": "Main e-commerce application",
   "isActive": true
 }
@@ -19,7 +20,7 @@ Host: {{tenantHost}}
 > {% 
 client.test("Ecommerce application created successfully", function() {
     client.assert(response.status === 201, "Expected status 201 - Created");
-    client.assert(response.body.applicationName === "ecommerce-app", "Application name should match");
+    client.assert(response.body.applicationName === "ecommerce", "Application name should match");
     client.assert(response.body.id !== undefined, "Response should contain application ID");
 });
 %}
@@ -33,7 +34,8 @@ Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
-  "applicationName": "analytics-app",
+  "id": "ba8b1d74-1cc6-42f9-8e59-43a46dc5ac9a",
+  "applicationName": "analytics",
   "description": "Analytics and reporting application",
   "isActive": true
 }
@@ -41,7 +43,7 @@ Host: {{tenantHost}}
 > {% 
 client.test("Analytics application created successfully", function() {
     client.assert(response.status === 201, "Expected status 201 - Created");
-    client.assert(response.body.applicationName === "analytics-app", "Application name should match");
+    client.assert(response.body.applicationName === "analytics", "Application name should match");
     client.assert(response.body.id !== undefined, "Response should contain application ID");
 });
 %}
@@ -55,7 +57,8 @@ Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
-  "applicationName": "cms-app",
+  "id": "7d6956ae-2277-4864-a3c0-fa84bee08e90",
+  "applicationName": "cms",
   "description": "Content management system",
   "isActive": true
 }
@@ -63,7 +66,7 @@ Host: {{tenantHost}}
 > {% 
 client.test("CMS application created successfully", function() {
     client.assert(response.status === 201, "Expected status 201 - Created");
-    client.assert(response.body.applicationName === "cms-app", "Application name should match");
+    client.assert(response.body.applicationName === "cms", "Application name should match");
     client.assert(response.body.id !== undefined, "Response should contain application ID");
 });
 %}
@@ -86,7 +89,7 @@ client.test("Applications retrieved successfully", function() {
 
 ### Get application by ID
 # Replace {id} with actual application ID from create response
-GET {{baseUrl}}/api/applications/1
+GET {{baseUrl}}/api/apps/3853f223-8a11-4c0e-a625-9d44687f5cfc
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -102,13 +105,12 @@ client.test("Application retrieved by ID successfully", function() {
 
 ### Update application
 # Replace {id} with actual application ID
-PUT {{baseUrl}}/api/applications/1
+PATCH {{baseUrl}}/api/apps/3853f223-8a11-4c0e-a625-9d44687f5cfc
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
-  "applicationName": "ecommerce-app-updated",
   "description": "Updated e-commerce application description",
   "isActive": true
 }
@@ -116,7 +118,7 @@ Host: {{tenantHost}}
 > {% 
 client.test("Application updated successfully", function() {
     client.assert(response.status === 200, "Expected status 200 - OK");
-    client.assert(response.body.applicationName === "ecommerce-app-updated", "Application name should be updated");
+    client.assert(response.body.applicationName === "ecommerce", "Application name should not be updated");
     client.assert(response.body.description === "Updated e-commerce application description", "Description should be updated");
 });
 %}
@@ -125,13 +127,12 @@ client.test("Application updated successfully", function() {
 
 ### Update application status to inactive
 # Replace {id} with actual application ID
-PUT {{baseUrl}}/api/applications/2
+PATCH {{baseUrl}}/api/apps/ba8b1d74-1cc6-42f9-8e59-43a46dc5ac9a
 Content-Type: application/json
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
-  "applicationName": "analytics-app",
   "description": "Analytics and reporting application",
   "isActive": false
 }
@@ -147,7 +148,7 @@ client.test("Application status updated to inactive", function() {
 
 ### Delete application
 # Replace {id} with actual application ID
-DELETE {{baseUrl}}/api/applications/3
+DELETE {{baseUrl}}/api/apps/7d6956ae-2277-4864-a3c0-fa84bee08e90
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 
@@ -170,7 +171,7 @@ Authorization: {{authToken}}
 Host: {{tenantHost}}
 
 {
-  "applicationName": "ecommerce-app",
+  "applicationName": "ecommerce",
   "description": "Duplicate application name",
   "isActive": true
 }
@@ -204,7 +205,7 @@ client.test("Empty application name rejected", function() {
 ###
 
 ### Test getting non-existent application
-GET {{baseUrl}}/api/applications/99999
+GET {{baseUrl}}/api/apps/0dc54e81-814e-4439-bb44-ea45049d234c
 Authorization: {{authToken}}
 Host: {{tenantHost}}
 

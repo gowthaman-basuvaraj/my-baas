@@ -16,7 +16,7 @@ object DataModelController {
     @OpenApi(
         summary = "Create a new data model",
         operationId = "createDataModel",
-        path = "/api/data/{entityName}/{versionName}",
+        path = "/api/app/{applicationName}/data/{entityName}/{versionName}",
         methods = [HttpMethod.POST],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -42,7 +42,7 @@ object DataModelController {
     @OpenApi(
         summary = "Get a data model by unique identifier",
         operationId = "getDataModel",
-        path = "/api/data/{entityName}/{uniqueIdentifier}",
+        path = "/api/app/{applicationName}/data/{entityName}/{uniqueIdentifier}",
         methods = [HttpMethod.GET],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -71,7 +71,7 @@ object DataModelController {
     @OpenApi(
         summary = "Get all data models for an entity",
         operationId = "getAllDataModels",
-        path = "/api/data/{entityName}",
+        path = "/api/app/{applicationName}/data/{entityName}",
         methods = [HttpMethod.GET],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true)
@@ -108,7 +108,7 @@ object DataModelController {
     @OpenApi(
         summary = "Update a data model",
         operationId = "updateDataModel",
-        path = "/api/data/{entityName}/{versionName}/{uniqueIdentifier}",
+        path = "/api/app/{applicationName}/data/{entityName}/{versionName}/{uniqueIdentifier}",
         methods = [HttpMethod.PUT],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -143,7 +143,7 @@ object DataModelController {
     @OpenApi(
         summary = "Partially update a data model",
         operationId = "patchDataModel",
-        path = "/api/data/{entityName}/{versionName}/{uniqueIdentifier}",
+        path = "/api/app/{applicationName}/data/{entityName}/{versionName}/{uniqueIdentifier}",
         methods = [HttpMethod.PATCH],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -177,7 +177,7 @@ object DataModelController {
     @OpenApi(
         summary = "Delete a data model",
         operationId = "deleteDataModel",
-        path = "/api/data/{entityName}/{uniqueIdentifier}",
+        path = "/api/app/{applicationName}/data/{entityName}/{uniqueIdentifier}",
         methods = [HttpMethod.DELETE],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -207,7 +207,7 @@ object DataModelController {
     @OpenApi(
         summary = "Migrate a data model to a different version",
         operationId = "migrateDataModel",
-        path = "/api/data/{entityName}/{uniqueIdentifier}/migrate",
+        path = "/api/app/{applicationName}/data/{entityName}/{uniqueIdentifier}/migrate",
         methods = [HttpMethod.POST],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -245,7 +245,7 @@ object DataModelController {
     @OpenApi(
         summary = "Get schema for an entity and version",
         operationId = "getSchema",
-        path = "/api/data/{entityName}/{versionName}/schema",
+        path = "/api/app/{applicationName}/data/{entityName}/{versionName}/schema",
         methods = [HttpMethod.GET],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -268,7 +268,7 @@ object DataModelController {
     @OpenApi(
         summary = "Validate payload against schema",
         operationId = "validatePayload",
-        path = "/api/data/{entityName}/{versionName}/validate",
+        path = "/api/app/{applicationName}/data/{entityName}/{versionName}/validate",
         methods = [HttpMethod.POST],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true),
@@ -293,7 +293,7 @@ object DataModelController {
     @OpenApi(
         summary = "Search data models",
         operationId = "searchDataModels",
-        path = "/api/data/{entityName}/search",
+        path = "/api/app/{applicationName}/data/{entityName}/search",
         methods = [HttpMethod.POST],
         pathParams = [
             OpenApiParam(name = "entityName", type = String::class, description = "The entity name", required = true)

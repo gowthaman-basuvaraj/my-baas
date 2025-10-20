@@ -18,7 +18,7 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Create a new schema",
         operationId = "createSchema",
-        path = "/api/applications/{applicationName}/schemas",
+        path = "/api/app/{applicationName}/schemas",
         methods = [HttpMethod.POST],
         pathParams = [
             OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true)
@@ -59,7 +59,7 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Get a schema by ID",
         operationId = "getSchema",
-        path = "/api/applications/{applicationName}/schemas/{id}",
+        path = "/api/app/{applicationName}/schemas/{id}",
         methods = [HttpMethod.GET],
         pathParams = [
             OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true),
@@ -81,7 +81,7 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Get all schemas",
         operationId = "getAllSchemas",
-        path = "/api/applications/{applicationName}/schemas",
+        path = "/api/app/{applicationName}/schemas",
         methods = [HttpMethod.GET],
         pathParams = [
             OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true)
@@ -114,7 +114,7 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Update a schema",
         operationId = "updateSchema",
-        path = "/api/applications/{applicationName}/schemas/{id}",
+        path = "/api/app/{applicationName}/schemas/{id}",
         methods = [HttpMethod.PUT],
         pathParams = [
             OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true),
@@ -158,7 +158,7 @@ object SchemaController : CrudHandler {
     @OpenApi(
         summary = "Delete a schema",
         operationId = "deleteSchema",
-        path = "/api/applications/{applicationName}/schemas/{id}",
+        path = "/api/app/{applicationName}/schemas/{id}",
         methods = [HttpMethod.DELETE],
         pathParams = [
             OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true),

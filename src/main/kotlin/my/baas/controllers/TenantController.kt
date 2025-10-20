@@ -7,6 +7,7 @@ import io.javalin.openapi.*
 import my.baas.config.AppContext
 import my.baas.models.TenantConfiguration
 import my.baas.models.TenantModel
+import java.util.UUID
 
 object TenantController {
 
@@ -48,7 +49,7 @@ object TenantController {
         path = "/api/tenants/{id}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
+            OpenApiParam(name = "id", type = UUID::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Tenant retrieved successfully"),
@@ -58,8 +59,7 @@ object TenantController {
         tags = ["Tenants"]
     )
     fun getOne(ctx: Context) {
-        val tenantId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid tenant ID")
+        val tenantId = UUID.fromString(ctx.pathParam("id"))
 
         val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
@@ -99,7 +99,7 @@ object TenantController {
         path = "/api/tenants/{id}",
         methods = [HttpMethod.PUT],
         pathParams = [
-            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
+            OpenApiParam(name = "id", type = UUID::class, description = "The tenant ID", required = true)
         ],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = TenantModel::class)]),
         responses = [
@@ -110,8 +110,7 @@ object TenantController {
         tags = ["Tenants"]
     )
     fun update(ctx: Context) {
-        val tenantId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid tenant ID")
+        val tenantId = UUID.fromString(ctx.pathParam("id"))
 
         val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
@@ -151,7 +150,7 @@ object TenantController {
         path = "/api/tenants/{id}",
         methods = [HttpMethod.DELETE],
         pathParams = [
-            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
+            OpenApiParam(name = "id", type = UUID::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("204", description = "Tenant deleted successfully"),
@@ -161,8 +160,7 @@ object TenantController {
         tags = ["Tenants"]
     )
     fun delete(ctx: Context) {
-        val tenantId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid tenant ID")
+        val tenantId = UUID.fromString(ctx.pathParam("id"))
 
         val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
@@ -177,7 +175,7 @@ object TenantController {
         path = "/api/tenants/{id}/activate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
+            OpenApiParam(name = "id", type = UUID::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Tenant activated successfully"),
@@ -187,8 +185,7 @@ object TenantController {
         tags = ["Tenants"]
     )
     fun activate(ctx: Context) {
-        val tenantId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid tenant ID")
+        val tenantId = UUID.fromString(ctx.pathParam("id"))
 
         val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
@@ -205,7 +202,7 @@ object TenantController {
         path = "/api/tenants/{id}/deactivate",
         methods = [HttpMethod.POST],
         pathParams = [
-            OpenApiParam(name = "id", type = Long::class, description = "The tenant ID", required = true)
+            OpenApiParam(name = "id", type = UUID::class, description = "The tenant ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Tenant deactivated successfully"),
@@ -215,8 +212,7 @@ object TenantController {
         tags = ["Tenants"]
     )
     fun deactivate(ctx: Context) {
-        val tenantId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid tenant ID")
+        val tenantId = UUID.fromString(ctx.pathParam("id"))
 
         val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")

@@ -242,7 +242,7 @@ object DataRepository {
             .where()
             .eq("entityName", entityName)
             .eq("versionName", versionName)
-            .eq("tenantId", tenantId)
+            .eq("tenant_id", tenantId)
             .eq("application_id", applicationId)
             .findOne()
     }
@@ -256,7 +256,7 @@ object DataRepository {
         val query = AppContext.db.find(SchemaModel::class.java)
             .where()
             .eq("entityName", entityName)
-            .eq("tenantId", tenantId)
+            .eq("tenant_id", tenantId)
             .eq("application_id", applicationId)
 
         if (versionName != null) {

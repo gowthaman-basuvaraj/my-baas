@@ -1,11 +1,13 @@
 package my.baas.controllers
 
 import io.javalin.apibuilder.CrudHandler
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
 import io.javalin.openapi.*
 import my.baas.config.AppContext
 import my.baas.dto.ApplicationModelCreateDto
+import my.baas.dto.ApplicationModelUpdateDto
 import my.baas.dto.ApplicationModelViewDto
 import my.baas.models.ApplicationModel
 
@@ -26,6 +28,15 @@ object ApplicationController : CrudHandler {
     override fun create(ctx: Context) {
         val appCreateDto = ctx.bodyAsClass(ApplicationModelCreateDto::class.java)
         val application = appCreateDto.toModel()
+        if(application.applicationName.isEmpty()) throw BadRequestResponse("Application name must not be empty")
+
+        val found = AppContext.db.find(ApplicationModel::class.java)
+            .where()
+            .eq("applicationName", application.applicationName)
+            .findOne()
+
+        if(found != null) throw BadRequestResponse("Application name must be unique")
+
         application.save()
 
         ctx.status(201).json(ApplicationModelViewDto.fromModel(application))
@@ -71,11 +82,11 @@ object ApplicationController : CrudHandler {
         summary = "Update an application",
         operationId = "updateApplication",
         path = "/api/applications/{id}",
-        methods = [HttpMethod.PUT],
+        methods = [HttpMethod.PATCH],
         pathParams = [
             OpenApiParam(name = "id", type = String::class, description = "The application ID", required = true)
         ],
-        requestBody = OpenApiRequestBody(content = [OpenApiContent(from = ApplicationModelCreateDto::class)]),
+        requestBody = OpenApiRequestBody(content = [OpenApiContent(from = ApplicationModelUpdateDto::class)]),
         responses = [
             OpenApiResponse("200", description = "Application updated successfully"),
             OpenApiResponse("400", description = "Bad request"),
@@ -87,9 +98,8 @@ object ApplicationController : CrudHandler {
         val application = AppContext.db.find(ApplicationModel::class.java, resourceId)
             ?: throw NotFoundResponse("Application not found")
 
-        val appUpdateDto = ctx.bodyAsClass(ApplicationModelCreateDto::class.java)
+        val appUpdateDto = ctx.bodyAsClass(ApplicationModelUpdateDto::class.java)
 
-        application.applicationName = appUpdateDto.applicationName
         application.description = appUpdateDto.description
         application.isActive = appUpdateDto.isActive
         application.update()

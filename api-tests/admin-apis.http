@@ -10,8 +10,9 @@ Content-Type: application/json
 Authorization: {{authToken}}
 
 {
+  "id": "c6553120-601a-42e7-a4b9-35d4a1050d1c",
   "name": "Acme Corporation",
-  "domain": "acme.example.com",
+  "domain": "localhost",
   "isActive": true,
   "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"],
   "config": {
@@ -35,6 +36,7 @@ Content-Type: application/json
 Authorization: {{authToken}}
 
 {
+  "id": "97f565ed-d56a-4460-a6e2-28a42ed2976e",
   "name": "Beta Company",
   "domain": "beta.example.com",
   "isActive": true,
@@ -85,7 +87,7 @@ Authorization: {{authToken}}
 > {% 
 client.test("Tenants retrieved successfully", function() {
     client.assert(response.status === 200, "Expected status 200 - OK");
-    client.assert(Array.isArray(response.body) || response.body.content !== undefined, "Response should be an array or have content property");
+    client.assert(Array.isArray(response.body.list), "Response should be an array");
 });
 %}
 
@@ -93,7 +95,7 @@ client.test("Tenants retrieved successfully", function() {
 
 ### Get tenant by ID
 # Replace {id} with actual tenant ID from create response
-GET {{baseUrl}}/admin/tenants/1
+GET {{baseUrl}}/admin/tenants/c6553120-601a-42e7-a4b9-35d4a1050d1c
 Authorization: {{authToken}}
 
 > {% 
@@ -108,22 +110,22 @@ client.test("Tenant retrieved by ID successfully", function() {
 
 ### Update tenant
 # Replace {id} with actual tenant ID
-PUT {{baseUrl}}/admin/tenants/1
+PUT {{baseUrl}}/admin/tenants/c6553120-601a-42e7-a4b9-35d4a1050d1c
 Content-Type: application/json
 Authorization: {{authToken}}
 
 {
   "name": "Acme Corporation Updated",
-  "domain": "acme.example.com",
+  "domain": "127.0.0.1",
   "isActive": true,
-  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12"]
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/12", "127.0.0.1"]
 }
 
 > {% 
 client.test("Tenant updated successfully", function() {
     client.assert(response.status === 200, "Expected status 200 - OK");
     client.assert(response.body.name === "Acme Corporation Updated", "Name should be updated");
-    client.assert(response.body.allowedIps.length === 3, "Should have 3 allowed IP ranges");
+    client.assert(response.body.allowedIps.length === 4, "Should have 4 allowed IP ranges");
 });
 %}
 
@@ -131,7 +133,7 @@ client.test("Tenant updated successfully", function() {
 
 ### Activate tenant
 # Replace {id} with actual tenant ID
-POST {{baseUrl}}/admin/tenants/1/activate
+POST {{baseUrl}}/admin/tenants/c6553120-601a-42e7-a4b9-35d4a1050d1c/activate
 Authorization: {{authToken}}
 
 > {% 
@@ -144,7 +146,7 @@ client.test("Tenant activated successfully", function() {
 
 ### Deactivate tenant
 # Replace {id} with actual tenant ID
-POST {{baseUrl}}/admin/tenants/1/deactivate
+POST {{baseUrl}}/admin/tenants/c6553120-601a-42e7-a4b9-35d4a1050d1c/deactivate
 Authorization: {{authToken}}
 
 > {% 
@@ -157,7 +159,7 @@ client.test("Tenant deactivated successfully", function() {
 
 ### Delete tenant
 # Replace {id} with actual tenant ID
-DELETE {{baseUrl}}/admin/tenants/1
+DELETE {{baseUrl}}/admin/tenants/97f565ed-d56a-4460-a6e2-28a42ed2976e
 Authorization: {{authToken}}
 
 > {% 

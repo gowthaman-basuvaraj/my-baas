@@ -52,7 +52,7 @@ create table data_model (
   version_name                  varchar(255) not null,
   who_created                   varchar(255) not null,
   who_modified                  varchar(255) not null,
-  constraint data_model_unique_identifier unique (unique_identifier,tenant_id,application_id,schema_id)
+  constraint data_model_unique_identifier unique (unique_identifier,tenant_id,application_id,schema_id, when_created)
 ) PARTITION BY RANGE (tenant_id, application_id, schema_id, when_created);
 
 create table report_execution_log (
