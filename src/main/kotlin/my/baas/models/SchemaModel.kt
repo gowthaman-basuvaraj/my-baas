@@ -1,18 +1,27 @@
 package my.baas.models
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import io.ebean.annotation.DbJsonB
 import io.ebean.annotation.Index
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import my.baas.annotations.GenerateDto
 import my.baas.services.LifecycleEvent
+import org.apache.commons.lang3.RandomStringUtils
+import java.util.UUID
 
+
+enum class PartitionBy {
+    YEAR, MONTH
+}
 
 @Entity
 @Index(columnNames = ["entity_name", "version_name", "tenant_id", "application_id"], unique = true)
 @GenerateDto(
     createDto = true,
     viewDto = true,
-    excludeFromView = ["tenant_id", "application_id"] // Additional exclusion for view DTO
+    excludeFromView = ["tenant_id", "application_id", "unique_id"] // Additional exclusion for view DTO
 )
 class SchemaModel(
 
@@ -31,17 +40,20 @@ class SchemaModel(
     @DbJsonB
     var lifecycleScripts: Map<LifecycleEvent, String> = emptyMap(),
 
-    var isValidationEnabled: Boolean = true
+    var isValidationEnabled: Boolean = true,
 
+    @Enumerated(EnumType.STRING)
+    var partitionBy: PartitionBy = PartitionBy.YEAR,
+
+    //fixme: add a trigger to prevent updating this column
+    val uniqueId: String = RandomStringUtils.secure().nextAlphanumeric(5),
 ) : BaseAppModel() {
+    @JsonIgnore
+    fun generateTableName(suffix: String): String {
+        return "data_model_${uniqueId}_${tenant.name.trim()}_${application.applicationName.trim()}_${entityName.trim()}_$suffix"
+            .lowercase()
+            .replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
+            .replace(Regex("_{2,}"), "_")
+    }
 
-    fun generateTableName(tenantId: Long, applicationId: Long): String {
-        return generateTableName(tenantId, applicationId, entityName)
-    }
-    
-    companion object {
-        fun generateTableName(tenantId: Long, applicationId: Long, entityName: String): String {
-            return "data_model_${tenantId}_${applicationId}_${entityName.lowercase()}"
-        }
-    }
 }

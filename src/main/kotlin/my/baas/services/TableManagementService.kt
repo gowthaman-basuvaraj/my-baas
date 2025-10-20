@@ -1,10 +1,14 @@
 package my.baas.services
 
 import com.jayway.jsonpath.JsonPath
-import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
+import my.baas.models.PartitionBy
 import my.baas.models.SchemaModel
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.concurrent.Executors
 
 object TableManagementService {
@@ -12,14 +16,59 @@ object TableManagementService {
     private val indexExecutor = Executors.newSingleThreadExecutor()
 
     fun createDataModelTable(schema: SchemaModel) {
-        //fixme: create partition
+        //tenant_id, application_id, schema_id, when_created
+        val tenantId = schema.tenant.id
+        val applicationId = schema.application.id
+        val schemaId = schema.id
+        val beginOf1900 = "1900-01-01"
+        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+
+
+        AppContext.db.sqlUpdate(
+            """
+            CREATE TABLE ${schema.generateTableName("till_$now")} PARTITION OF data_model
+            FOR VALUES FROM ('$tenantId','$applicationId', '$schemaId', '$beginOf1900') TO ('$tenantId','$applicationId', '$schemaId', '$now');
+            """
+        ).execute()
+
+
+        if (schema.partitionBy == PartitionBy.MONTH) {
+            val nextMonth = LocalDate.now()
+                .plusMonths(1)
+                .withDayOfMonth(1)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM"))
+
+            AppContext.db.sqlUpdate(
+                """
+            CREATE TABLE ${schema.generateTableName(nextMonth)} PARTITION OF data_model
+            FOR VALUES FROM ('$tenantId','$applicationId', '$schemaId', '$now') TO ('$tenantId','$applicationId', '$schemaId', '$nextMonth');
+            """
+            ).execute()
+        } else {
+            val nextYear = LocalDate.now().plusYears(1)
+                .withDayOfMonth(1)
+                .withMonth(1)
+                .format(DateTimeFormatter.ofPattern("yyyy"))
+            AppContext.db.sqlUpdate(
+                """
+            CREATE TABLE ${schema.generateTableName(nextYear)} PARTITION OF data_model
+            FOR VALUES FROM ('$tenantId','$applicationId', '$schemaId', '$now') TO ('$tenantId','$applicationId', '$schemaId', '$nextYear');
+            """
+            ).execute()
+        }
+
     }
 
-    fun dropDataModelTable(tenantId: Long, applicationId: Long, entityName: String) {
-       //fixme: detach partition
+    fun dropDataModelTable(tenantId: UUID, applicationId: UUID, entityName: String) {
+        //fixme: detach partition
     }
 
-    fun updateIndexes(schema: SchemaModel, oldIndexedPaths: List<String>, newIndexedPaths: List<String>, tenantId: Long) {
+    fun updateIndexes(
+        schema: SchemaModel,
+        oldIndexedPaths: List<String>,
+        newIndexedPaths: List<String>,
+        tenantId: UUID
+    ) {
         val applicationId = schema.application.id
         val tableName = "data_model"
         //fixme: add a where clause for index creation and make it concurrent

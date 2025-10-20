@@ -10,6 +10,7 @@ import my.baas.models.ReportExecutionRequest
 import my.baas.services.JobRunnerService
 import my.baas.services.ReportService
 import java.io.FileInputStream
+import java.util.UUID
 
 object ReportController {
 
@@ -40,7 +41,7 @@ object ReportController {
         path = "/api/reports/{id}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam(name = "id", type = Long::class, description = "The report ID", required = true)
+            OpenApiParam(name = "id", type = UUID::class, description = "The report ID", required = true)
         ],
         responses = [
             OpenApiResponse("200", description = "Report retrieved successfully"),
@@ -50,8 +51,7 @@ object ReportController {
         tags = ["Reports"]
     )
     fun getOne(ctx: Context) {
-        val reportId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid report ID")
+        val reportId = UUID.fromString(ctx.pathParam("id"))
 
         val report = reportService.getReport(reportId)
         ctx.json(ReportModelViewDto.fromModel(report))
@@ -111,8 +111,7 @@ object ReportController {
         tags = ["Reports"]
     )
     fun update(ctx: Context) {
-        val reportId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid report ID")
+        val reportId = UUID.fromString(ctx.pathParam("id"))
 
         val reportCreateDto = ctx.bodyAsClass(ReportModelCreateDto::class.java)
         val updatedReport = reportCreateDto.toModel()
@@ -136,8 +135,7 @@ object ReportController {
         tags = ["Reports"]
     )
     fun delete(ctx: Context) {
-        val reportId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid report ID")
+        val reportId = UUID.fromString(ctx.pathParam("id"))
 
         val deleted = reportService.deleteReport(reportId)
         if (deleted) {
@@ -179,8 +177,7 @@ object ReportController {
         tags = ["Reports"]
     )
     fun activate(ctx: Context) {
-        val reportId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid report ID")
+        val reportId = UUID.fromString(ctx.pathParam("id"))
 
         val report = reportService.getReport(reportId)
         report.isActive = true
@@ -205,8 +202,7 @@ object ReportController {
         tags = ["Reports"]
     )
     fun deactivate(ctx: Context) {
-        val reportId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid report ID")
+        val reportId = UUID.fromString(ctx.pathParam("id"))
 
         val report = reportService.getReport(reportId)
         report.isActive = false
@@ -337,8 +333,7 @@ object ReportController {
         tags = ["Report Jobs"]
     )
     fun getExecutionHistory(ctx: Context) {
-        val reportId = ctx.pathParam("id").toLongOrNull()
-            ?: throw BadRequestResponse("Invalid report ID")
+        val reportId = UUID.fromString(ctx.pathParam("id"))
 
         val page = ctx.queryParam("page")?.toIntOrNull() ?: 1
         val pageSize = ctx.queryParam("pageSize")?.toIntOrNull() ?: 20

@@ -1,6 +1,7 @@
 package my.baas.dto
 
 import my.baas.models.ApplicationModel
+import java.util.UUID
 
 data class ApplicationModelCreateDto(
     val applicationName: String,
@@ -17,7 +18,7 @@ data class ApplicationModelCreateDto(
 }
 
 data class ApplicationModelViewDto(
-    val id: Long?,
+    val id: UUID?,
     val applicationName: String,
     val description: String?,
     val isActive: Boolean,

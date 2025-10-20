@@ -7,13 +7,14 @@ import jakarta.persistence.Id
 import jakarta.persistence.MappedSuperclass
 import jakarta.persistence.Version
 import java.time.Instant
+import java.util.UUID
 
 @MappedSuperclass
 abstract class BaseModel : Model() {
 
     @Id
     @GeneratedValue
-    var id: Long = 0
+    lateinit var id: UUID
 
     @SoftDelete
     var deleted: Boolean = false

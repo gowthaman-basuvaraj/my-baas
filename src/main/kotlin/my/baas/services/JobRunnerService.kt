@@ -21,6 +21,7 @@ import java.io.OutputStreamWriter
 import java.nio.file.Files
 import java.time.Instant
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -96,7 +97,7 @@ object JobRunnerService {
 
             val startTime = System.currentTimeMillis()
 
-            val tenant = AppContext.db.find(TenantModel::class.java, executionLog.tenantId) ?: return
+            val tenant = AppContext.db.find(TenantModel::class.java, executionLog.tenant.id) ?: return
             // Get tenant-specific max execution time
             val maxExecutionTimeMs = tenant.config.maxReportExecutionTimeMinutes * 60 * 1000
 
@@ -309,7 +310,7 @@ object JobRunnerService {
     }
 
     private fun uploadToMinio(executionLog: ReportExecutionLog, file: File): Pair<String?, String?> {
-        val tenant = AppContext.db.find(TenantModel::class.java, executionLog.tenantId) ?: return null to null
+        val tenant = AppContext.db.find(TenantModel::class.java, executionLog.tenant.id) ?: return null to null
 
         return if (minioConfig is MinioConfig.Present) {
             try {
@@ -356,7 +357,7 @@ object JobRunnerService {
     private fun cleanupOldResults() {
         try {
             // Group jobs by tenant to apply their specific retention periods
-            val tenantJobs = mutableMapOf<Long, MutableList<ReportExecutionLog>>()
+            val tenantJobs = mutableMapOf<UUID, MutableList<ReportExecutionLog>>()
 
             // Get all completed jobs
             val allCompletedJobs = AppContext.db.find(ReportExecutionLog::class.java).where()
@@ -366,7 +367,7 @@ object JobRunnerService {
 
             // Group by tenant
             allCompletedJobs.forEach { job ->
-                tenantJobs.getOrPut(job.tenantId) { mutableListOf() }.add(job)
+                tenantJobs.getOrPut(job.tenant.id) { mutableListOf() }.add(job)
             }
 
             var totalCleaned = 0

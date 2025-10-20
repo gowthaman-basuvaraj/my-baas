@@ -39,7 +39,7 @@ object ReportService{
         return repository.save(report)
     }
 
-    fun updateReport(id: Long, updatedReport: ReportModel): ReportModel {
+    fun updateReport(id: UUID, updatedReport: ReportModel): ReportModel {
         val existingReport = repository.findById(id)
             ?: throw NotFoundResponse("Report not found with id: $id")
 
@@ -72,7 +72,7 @@ object ReportService{
         return repository.update(existingReport)
     }
 
-    fun getReport(id: Long): ReportModel {
+    fun getReport(id: UUID): ReportModel {
         return repository.findById(id)
             ?: throw NotFoundResponse("Report not found with id: $id")
     }
@@ -81,7 +81,7 @@ object ReportService{
         return repository.findAll(pageNo, pageSize)
     }
 
-    fun deleteReport(id: Long): Boolean {
+    fun deleteReport(id: UUID): Boolean {
         return repository.deleteById(id)
     }
 
@@ -115,7 +115,7 @@ object ReportService{
             this.status = ReportExecutionLog.JobStatus.PENDING
             this.executionType = ReportExecutionLog.ExecutionTrigger.API_REQUEST
             this.requestedBy = currentUser.userId
-            this.tenantId = CurrentUser.get().tenant?.id ?: throw BadRequestResponse("tenant not found")
+            this.tenant = CurrentUser.get().tenant ?: throw BadRequestResponse("tenant not found")
             this.fileFormat = request.outputFormat
             this.executionMetadata = mapOf(
                 "parameters" to request.parameters,
@@ -158,7 +158,7 @@ object ReportService{
         )
     }
 
-    fun getExecutionHistory(reportId: Long, pageNo: Int = 1, pageSize: Int = 20): PagedList<ReportExecutionLog> {
+    fun getExecutionHistory(reportId: UUID, pageNo: Int = 1, pageSize: Int = 20): PagedList<ReportExecutionLog> {
         return executionRepository.findByReportId(reportId, pageNo, pageSize)
     }
 

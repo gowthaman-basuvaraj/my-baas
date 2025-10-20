@@ -105,7 +105,7 @@ object DataRepository {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
         val applicationId = CurrentUser.getApplicationId() ?: throw IllegalStateException("No application in context")
-        val tableName = SchemaModel.generateTableName(tenantId, applicationId, entityName)
+        val tableName = "data_model"
 
         if (filters.isEmpty()) {
             return findAllByEntityName(entityName, null, pageNo, pageSize)

@@ -3,6 +3,7 @@ package my.baas.repositories
 import io.ebean.PagedList
 import my.baas.config.AppContext
 import my.baas.models.ReportModel
+import java.util.UUID
 
 
 object ReportRepository {
@@ -12,7 +13,7 @@ object ReportRepository {
         return report
     }
 
-    fun findById(id: Long): ReportModel? {
+    fun findById(id: UUID): ReportModel? {
         return AppContext.db.find(ReportModel::class.java, id)
     }
 
@@ -35,7 +36,7 @@ object ReportRepository {
         return report
     }
 
-    fun deleteById(id: Long): Boolean {
+    fun deleteById(id: UUID): Boolean {
         return AppContext.db.find(ReportModel::class.java, id)?.delete() ?: false
     }
 

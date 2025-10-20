@@ -3,13 +3,14 @@ package my.baas.dto
 import my.baas.models.SchemaModel
 import my.baas.services.LifecycleEvent
 import java.time.Instant
+import java.util.UUID
 
 /**
  * DTO for viewing a SchemaModel
  * Generated from SchemaModel, excluding sensitive/internal fields
  */
 data class SchemaModelViewDto(
-    val id: Long,
+    val id: UUID,
     val entityName: String,
     val jsonSchema: Map<String, Any>,
     val versionName: String,

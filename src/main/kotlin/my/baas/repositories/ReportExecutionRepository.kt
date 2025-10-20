@@ -4,7 +4,7 @@ import io.ebean.PagedList
 import my.baas.config.AppContext
 import my.baas.models.ReportExecutionLog
 import java.time.Instant
-
+import java.util.UUID
 
 
 object ReportExecutionRepository {
@@ -21,11 +21,11 @@ object ReportExecutionRepository {
             .findOne()
     }
 
-     fun findById(id: Long): ReportExecutionLog? {
+     fun findById(id: UUID): ReportExecutionLog? {
         return AppContext.db.find(ReportExecutionLog::class.java, id)
     }
 
-     fun findByReportId(reportId: Long, pageNo: Int, pageSize: Int): PagedList<ReportExecutionLog> {
+     fun findByReportId(reportId: UUID, pageNo: Int, pageSize: Int): PagedList<ReportExecutionLog> {
         return AppContext.db.find(ReportExecutionLog::class.java)
             .where()
             .eq("report.id", reportId)
@@ -83,11 +83,11 @@ object ReportExecutionRepository {
         return executionLog
     }
 
-     fun deleteById(id: Long): Boolean {
+     fun deleteById(id: UUID): Boolean {
         return AppContext.db.find(ReportExecutionLog::class.java, id)?.delete() ?: false
     }
 
-     fun countByReportIdAndStatus(reportId: Long, status: ReportExecutionLog.JobStatus): Long {
+     fun countByReportIdAndStatus(reportId: UUID, status: ReportExecutionLog.JobStatus): Long {
         return AppContext.db.find(ReportExecutionLog::class.java)
             .where()
             .eq("report.id", reportId)
@@ -95,7 +95,7 @@ object ReportExecutionRepository {
             .findCount().toLong()
     }
 
-     fun findRecentExecutions(reportId: Long, limit: Int): List<ReportExecutionLog> {
+     fun findRecentExecutions(reportId: UUID, limit: Int): List<ReportExecutionLog> {
         return AppContext.db.find(ReportExecutionLog::class.java)
             .where()
             .eq("report.id", reportId)

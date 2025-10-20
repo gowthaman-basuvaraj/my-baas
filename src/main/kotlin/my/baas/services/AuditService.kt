@@ -39,9 +39,6 @@ object AuditService {
                 notes = notes
             )
             
-            // Set tenant information
-            auditLog.tenantId = tenant.id
-            
             AppContext.db.save(auditLog)
             
             logger.debug("Audit log created: ${action.name} for $entityName/$uniqueIdentifier by ${currentUser.userId}")

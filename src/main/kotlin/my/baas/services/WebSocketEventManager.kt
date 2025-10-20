@@ -3,6 +3,7 @@ package my.baas.services
 import io.javalin.websocket.WsContext
 import my.baas.config.AppContext.objectMapper
 import org.slf4j.LoggerFactory
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 
@@ -19,7 +20,7 @@ data class DataChangeEvent(
     val entityName: String,
     val uniqueIdentifier: String,
     val versionName: String,
-    val tenantId: Long,
+    val tenantId: UUID,
     val data: Map<String, Any>? = null,
     val timestamp: Long = System.currentTimeMillis()
 )
@@ -41,10 +42,10 @@ object WebSocketEventManager {
 
     // Map of tenant to WsContext to their subscriptions
     private val tenantClients =
-        ConcurrentHashMap<Long, ConcurrentHashMap<WsContext, CopyOnWriteArraySet<SubscriptionKey>>>()
+        ConcurrentHashMap<UUID, ConcurrentHashMap<WsContext, CopyOnWriteArraySet<SubscriptionKey>>>()
 
 
-    fun handleConnection(ctx: WsContext, tenantId: Long) {
+    fun handleConnection(ctx: WsContext, tenantId: UUID) {
 
         tenantClients.computeIfAbsent(tenantId) { ConcurrentHashMap() }.putIfAbsent(ctx, CopyOnWriteArraySet())
 
@@ -61,14 +62,14 @@ object WebSocketEventManager {
         )
     }
 
-    fun handleDisconnection(ctx: WsContext, tenantId: Long) {
+    fun handleDisconnection(ctx: WsContext, tenantId: UUID) {
         // Remove all subscriptions for this client
         tenantClients[tenantId]?.remove(ctx)
 
         logger.debug("WebSocket connection closed and cleaned up for tenantId [$tenantId]")
     }
 
-    fun handleMessage(ctx: WsContext, message: String, tenantId: Long) {
+    fun handleMessage(ctx: WsContext, message: String, tenantId: UUID) {
         try {
             val subscriptionMessage = objectMapper.readValue(message, SubscriptionMessage::class.java)
 
@@ -99,7 +100,7 @@ object WebSocketEventManager {
         }
     }
 
-    private fun handleSubscribe(ctx: WsContext, message: SubscriptionMessage, tenantId: Long) {
+    private fun handleSubscribe(ctx: WsContext, message: SubscriptionMessage, tenantId: UUID) {
         if (message.entityName == null) {
             ctx.send(
                 objectMapper.writeValueAsString(
@@ -128,7 +129,7 @@ object WebSocketEventManager {
         )
     }
 
-    private fun handleUnsubscribe(ctx: WsContext, message: SubscriptionMessage, tenantId: Long) {
+    private fun handleUnsubscribe(ctx: WsContext, message: SubscriptionMessage, tenantId: UUID) {
         if (message.entityName == null) {
             ctx.send(
                 objectMapper.writeValueAsString(

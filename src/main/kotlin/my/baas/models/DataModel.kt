@@ -22,7 +22,7 @@ class DataModel(
 
     var entityName: String,
 
-    var versionName: String
+    var versionName: String,
 
 ) : BaseAppModel() {
 

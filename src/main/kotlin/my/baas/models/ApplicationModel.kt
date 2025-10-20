@@ -1,6 +1,8 @@
 package my.baas.models
 
 import io.ebean.annotation.Index
+import io.ebean.annotation.Length
+import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import my.baas.annotations.GenerateDto
 

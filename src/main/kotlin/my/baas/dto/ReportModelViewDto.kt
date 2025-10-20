@@ -2,13 +2,14 @@ package my.baas.dto
 
 import my.baas.models.ReportModel
 import java.time.Instant
+import java.util.UUID
 
 /**
  * DTO for viewing a ReportModel
  * Generated from ReportModel, excluding sensitive/internal fields
  */
 data class ReportModelViewDto(
-    val id: Long,
+    val id: UUID,
     val name: String,
     val sql: String,
     val executionType: ReportModel.ExecutionType,

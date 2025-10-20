@@ -1,10 +1,11 @@
 package my.baas.models
 
 import java.time.Instant
+import java.util.UUID
 
 data class JobSubmissionResponse(
     val jobId: String,
-    val reportId: Long,
+    val reportId: UUID,
     val reportName: String,
     val status: ReportExecutionLog.JobStatus,
     val submittedAt: Instant,
@@ -13,7 +14,7 @@ data class JobSubmissionResponse(
 
 data class JobStatusResponse(
     val jobId: String,
-    val reportId: Long,
+    val reportId: UUID,
     val reportName: String,
     val status: ReportExecutionLog.JobStatus,
     val executionType: ReportExecutionLog.ExecutionTrigger,
@@ -39,7 +40,7 @@ data class JobProgress(
 )
 
 data class ReportExecutionRequest(
-    val reportId: Long,
+    val reportId: UUID,
     val parameters: Map<String, Any> = emptyMap(),
     val outputFormat: ReportModel.FileFormat = ReportModel.FileFormat.JSON,
     val priority: JobPriority = JobPriority.NORMAL
@@ -47,7 +48,7 @@ data class ReportExecutionRequest(
 
 data class ScheduledJobInfo(
     val jobId: String,
-    val reportId: Long,
+    val reportId: UUID,
     val reportName: String,
     val cronExpression: String,
     val nextExecutionTime: Instant,

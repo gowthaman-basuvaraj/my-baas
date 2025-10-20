@@ -1,6 +1,8 @@
 package my.baas.auth
 
 import my.baas.models.TenantModel
+import java.util.UUID
+
 enum class UserType {
     ADMIN, TENANT, ANONYMOUS;
 }
@@ -9,7 +11,7 @@ data class UserContext(
     val tenant: TenantModel? = null,
     val clientIp: String? = null,
     val userType: UserType = UserType.ANONYMOUS,
-    val applicationId: Long? = null,
+    val applicationId: UUID? = null,
     val applicationName: String? = null,
     val entityName: String? = null,
     val versionName: String? = null
@@ -29,7 +31,7 @@ object CurrentUser {
 
     fun getTenant(): TenantModel? = userContext.get().tenant
     
-    fun getApplicationId(): Long? = userContext.get().applicationId
+    fun getApplicationId(): UUID? = userContext.get().applicationId
     
     fun getApplicationName(): String? = userContext.get().applicationName
     
@@ -37,7 +39,7 @@ object CurrentUser {
     
     fun getVersionName(): String? = userContext.get().versionName
 
-    fun setApplicationContext(applicationId: Long?, applicationName: String?) {
+    fun setApplicationContext(applicationId: UUID?, applicationName: String?) {
         val current = get()
         set(current.copy(applicationId = applicationId, applicationName = applicationName))
     }
