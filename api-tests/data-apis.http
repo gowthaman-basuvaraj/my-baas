@@ -293,9 +293,9 @@ Host: {{tenantHost}}
 {
   "filters": [
     {
-      "jsonPath": "name",
-      "operator": "CONTAINS",
-      "value": "Doe"
+      "jsonPath": "tags",
+      "operator": "ARRAY_CONTAINS",
+      "value": ["developer"]
     }
   ],
   "pageNo": 1,

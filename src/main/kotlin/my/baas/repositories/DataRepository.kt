@@ -1,10 +1,7 @@
 package my.baas.repositories
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ebean.ExpressionList
 import io.ebean.PagedList
-import io.ebean.RawSql
-import io.ebean.RawSqlBuilder
 import io.javalin.http.BadRequestResponse
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
@@ -13,7 +10,6 @@ import my.baas.dto.FilterOperator
 import my.baas.models.DataModel
 import my.baas.models.SchemaModel
 import my.baas.services.TableManagementService.parseJsonPathToChain
-import org.slf4j.LoggerFactory
 
 object DataRepository {
 
@@ -116,7 +112,7 @@ object DataRepository {
         val jsonPath = parseJsonPathToChain(filter.jsonPath)
         val jsonPathChain = "($jsonPath)::$castType"
 
-        when(filter.operator){
+        when (filter.operator) {
             FilterOperator.EQ -> q.raw("$jsonPathChain = ?", filter.value)
             FilterOperator.NE -> q.raw("$jsonPathChain <> ?", filter.value)
             FilterOperator.LT -> q.raw("$jsonPathChain < ?", filter.value)
@@ -125,17 +121,26 @@ object DataRepository {
             FilterOperator.GE -> q.raw("$jsonPathChain >= ?", filter.value)
             FilterOperator.IN -> q.`in`(jsonPathChain, filter.value)
             FilterOperator.NOT_IN -> q.notIn(jsonPathChain, filter.value)
-            FilterOperator.ARRAY_CONTAINS -> TODO()
-            FilterOperator.CONTAINS -> TODO()
-            FilterOperator.CONTAINED_BY -> TODO()
-            FilterOperator.HAS_KEY -> q.raw("$jsonPathChain ?", filter.value) //fixme
-            FilterOperator.HAS_ANY_KEYS ->  q.raw("$jsonPathChain ?|", filter.value) //fixme
-            FilterOperator.HAS_ALL_KEYS -> q.raw("$jsonPathChain ?&", filter.value) //fixme
-            FilterOperator.PATH_EXISTS -> q.jsonExists("data", jsonPathChain)
-            FilterOperator.PATH_MATCH -> q.raw("$jsonPathChain @@ ?", filter.value)
+            FilterOperator.ARRAY_CONTAINS -> q.raw("$jsonPath ?? ?", filter.getListValue().first()!!)
+            FilterOperator.CONTAINS -> q.raw(
+                "$jsonPath @> cast(? as jsonb)",
+                AppContext.objectMapper.writeValueAsString(filter.value)
+            )
+
+            FilterOperator.CONTAINED_BY -> q.raw(
+                "$jsonPath <@ cast(? as jsonb)",
+                AppContext.objectMapper.writeValueAsString(filter.value)
+            )
+
+            FilterOperator.HAS_KEY -> q.raw("$jsonPath ?? ?", filter.getListValue().first()!!)
+            FilterOperator.HAS_ANY_KEYS -> q.raw("$jsonPath ??| ?", filter.getListValue())
+            FilterOperator.HAS_ALL_KEYS -> q.raw("$jsonPath ??& ?", filter.getListValue())
+            FilterOperator.PATH_EXISTS -> q.raw("$jsonPath @?? cast(? as jsonpath)", filter.value)
+            FilterOperator.PATH_MATCH -> q.raw("$jsonPath @@ cast(? as jsonpath)", filter.value)
         }
 
     }
+
     fun findSchemaByEntityAndVersion(entityName: String, versionName: String): SchemaModel? {
         val tenantId = CurrentUser.getTenant()?.id
             ?: throw IllegalStateException("No tenant in context")
