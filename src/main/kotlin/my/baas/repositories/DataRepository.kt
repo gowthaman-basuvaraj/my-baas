@@ -5,6 +5,7 @@ import io.ebean.PagedList
 import io.javalin.http.BadRequestResponse
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
+import my.baas.config.AppContext.objectMapper as om
 import my.baas.dto.FilterDto
 import my.baas.dto.FilterOperator
 import my.baas.models.DataModel
@@ -113,23 +114,23 @@ object DataRepository {
         val jsonPathChain = "($jsonPath)::$castType"
 
         when (filter.operator) {
-            FilterOperator.EQ -> q.raw("$jsonPathChain = ?", filter.value)
-            FilterOperator.NE -> q.raw("$jsonPathChain <> ?", filter.value)
-            FilterOperator.LT -> q.raw("$jsonPathChain < ?", filter.value)
-            FilterOperator.LE -> q.raw("$jsonPathChain <= ?", filter.value)
-            FilterOperator.GT -> q.raw("$jsonPathChain > ?", filter.value)
-            FilterOperator.GE -> q.raw("$jsonPathChain >= ?", filter.value)
+            FilterOperator.EQ -> q.raw("$jsonPath = cast(? as jsonb)", om.writeValueAsString(filter.value))
+            FilterOperator.NE -> q.raw("$jsonPath <> cast(? as jsonb)", om.writeValueAsString(filter.value))
+            FilterOperator.LT -> q.raw("$jsonPath < cast(? as jsonb)", om.writeValueAsString(filter.value))
+            FilterOperator.LE -> q.raw("$jsonPath <= cast(? as jsonb)", om.writeValueAsString(filter.value))
+            FilterOperator.GT -> q.raw("$jsonPath > cast(? as jsonb)", om.writeValueAsString(filter.value))
+            FilterOperator.GE -> q.raw("$jsonPath >= cast(? as jsonb)", om.writeValueAsString(filter.value))
             FilterOperator.IN -> q.`in`(jsonPathChain, filter.value)
             FilterOperator.NOT_IN -> q.notIn(jsonPathChain, filter.value)
             FilterOperator.ARRAY_CONTAINS -> q.raw("$jsonPath ?? ?", filter.getListValue().first()!!)
             FilterOperator.CONTAINS -> q.raw(
                 "$jsonPath @> cast(? as jsonb)",
-                AppContext.objectMapper.writeValueAsString(filter.value)
+                om.writeValueAsString(filter.value)
             )
 
             FilterOperator.CONTAINED_BY -> q.raw(
                 "$jsonPath <@ cast(? as jsonb)",
-                AppContext.objectMapper.writeValueAsString(filter.value)
+                om.writeValueAsString(filter.value)
             )
 
             FilterOperator.HAS_KEY -> q.raw("$jsonPath ?? ?", filter.getListValue().first()!!)
