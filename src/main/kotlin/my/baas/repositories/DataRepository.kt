@@ -114,6 +114,7 @@ object DataRepository {
         val jsonPathChain = "($jsonPath)::$castType"
 
         when (filter.operator) {
+            FilterOperator.STRING_CONTAINS -> q.raw("$jsonPath::text ilike ?", "%${filter.value}%")
             FilterOperator.EQ -> q.raw("$jsonPath = cast(? as jsonb)", om.writeValueAsString(filter.value))
             FilterOperator.NE -> q.raw("$jsonPath <> cast(? as jsonb)", om.writeValueAsString(filter.value))
             FilterOperator.LT -> q.raw("$jsonPath < cast(? as jsonb)", om.writeValueAsString(filter.value))

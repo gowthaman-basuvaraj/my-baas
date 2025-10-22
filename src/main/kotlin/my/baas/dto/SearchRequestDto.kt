@@ -55,6 +55,7 @@ enum class FilterOperator {
     IN,         // in list
     NOT_IN,     // not in list
 
+    STRING_CONTAINS, // ilike, String Contains
     ARRAY_CONTAINS, // ?, Array Contains
     CONTAINS,       // @>
     CONTAINED_BY,   // <@
