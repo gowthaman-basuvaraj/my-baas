@@ -7,7 +7,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.ManyToOne
 
 @Entity
-@Index(name = "data_model_unique_identifier", unique = true, columnNames = ["unique_identifier", "tenant_id", "application_id", "schema_id"])
+@Index(name = "data_model_unique_identifier", columnNames = ["unique_identifier", "tenant_id", "application_id", "schema_id"])
 class DataModel(
 
     @ManyToOne

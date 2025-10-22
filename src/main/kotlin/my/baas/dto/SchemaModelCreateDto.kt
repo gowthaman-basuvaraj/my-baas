@@ -8,6 +8,14 @@ import java.util.UUID
  * DTO for creating a new SchemaModel
  * Generated from SchemaModel, excluding internal/system fields
  */
+data class SchemaModelUpdateDto(
+    val id: UUID? = null,
+    val jsonSchema: Map<String, Any>,
+    val versionName: String,
+    val indexedJsonPaths: List<String> = emptyList(),
+    val lifecycleScripts: Map<LifecycleEvent, String> = emptyMap(),
+    val isValidationEnabled: Boolean = true
+)
 data class SchemaModelCreateDto(
     val id: UUID? = null,
     val entityName: String,

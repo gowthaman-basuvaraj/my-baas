@@ -18,15 +18,15 @@
         <createTable name="audit_log" identityType="external" pkName="pk_audit_log">
             <column name="id" type="uuid" primaryKey="true" identity="true"/>
             <column name="tenant_id" type="uuid" notnull="true" references="tenant_model.id" foreignKeyName="fk_audit_log_tenant_id" foreignKeyIndex="ix_audit_log_tenant_id"/>
-            <column name="entity_name" type="varchar" notnull="true"/>
-            <column name="unique_identifier" type="varchar" notnull="true"/>
-            <column name="action" type="varchar(8)" notnull="true" checkConstraint="check ( action in ('CREATE','UPDATE','PATCH','DELETE','MIGRATE','RE_INDEX'))" checkConstraintName="ck_audit_log_action"/>
-            <column name="user_id" type="varchar" notnull="true"/>
-            <column name="client_ip" type="varchar" notnull="true"/>
-            <column name="created_at" type="timestamp" notnull="true"/>
-            <column name="old_data" type="jsonb"/>
-            <column name="new_data" type="jsonb"/>
-            <column name="notes" type="varchar"/>
+            <column name="entity_name" type="varchar(255)" notnull="true"/>
+            <column name="unique_identifier" type="varchar(255)" notnull="true"/>
+            <column name="action" type="varchar(255)" notnull="true" checkConstraint="check ( action in ('CREATE','UPDATE','PATCH','DELETE','MIGRATE','RE_INDEX'))" checkConstraintName="ck_audit_log_action"/>
+            <column name="user_id" type="varchar(255)" notnull="true"/>
+            <column name="client_ip" type="varchar(255)" notnull="true"/>
+            <column name="created_at" type="timestamp(255)" notnull="true"/>
+            <column name="old_data" type="jsonb(255)"/>
+            <column name="new_data" type="jsonb(255)"/>
+            <column name="notes" type="varchar(255)"/>
             <column name="deleted" type="boolean" defaultValue="false" notnull="true"/>
             <column name="version" type="integer" notnull="true"/>
             <column name="when_created" type="timestamp" notnull="true"/>
@@ -49,7 +49,6 @@
             <column name="when_modified" type="timestamp" notnull="true"/>
             <column name="who_created" type="varchar" notnull="true"/>
             <column name="who_modified" type="varchar" notnull="true"/>
-            <uniqueConstraint name="data_model_unique_identifier" columnNames="unique_identifier,tenant_id,application_id,schema_id" oneToOne="false" nullableColumns="application_id"/>
         </createTable>
         <createTable name="report_execution_log" identityType="external" pkName="pk_report_execution_log">
             <column name="id" type="uuid" primaryKey="true" identity="true"/>
@@ -83,13 +82,13 @@
         <createTable name="report_model" identityType="external" pkName="pk_report_model">
             <column name="id" type="uuid" primaryKey="true" identity="true"/>
             <column name="tenant_id" type="uuid" notnull="true" references="tenant_model.id" foreignKeyName="fk_report_model_tenant_id" foreignKeyIndex="ix_report_model_tenant_id"/>
-            <column name="name" type="varchar" notnull="true"/>
+            <column name="name" type="varchar(255)" notnull="true"/>
             <column name="sql" type="TEXT" notnull="true"/>
-            <column name="execution_type" type="varchar(9)" notnull="true" checkConstraint="check ( execution_type in ('ADHOC','SCHEDULED','BOTH'))" checkConstraintName="ck_report_model_execution_type"/>
+            <column name="execution_type" type="varchar(255)" notnull="true" checkConstraint="check ( execution_type in ('ADHOC','SCHEDULED','BOTH'))" checkConstraintName="ck_report_model_execution_type"/>
             <column name="cron_schedule" type="varchar"/>
             <column name="completion_actions" type="jsonb" notnull="true"/>
             <column name="is_active" type="boolean" defaultValue="false" notnull="true"/>
-            <column name="file_format" type="varchar(4)" notnull="true" checkConstraint="check ( file_format in ('CSV','JSON','XLS','XLSX'))" checkConstraintName="ck_report_model_file_format"/>
+            <column name="file_format" type="varchar(255)" notnull="true" checkConstraint="check ( file_format in ('CSV','JSON','XLS','XLSX'))" checkConstraintName="ck_report_model_file_format"/>
             <column name="parameters" type="jsonb" notnull="true"/>
             <column name="deleted" type="boolean" defaultValue="false" notnull="true"/>
             <column name="version" type="integer" notnull="true"/>
@@ -138,6 +137,7 @@
             <uniqueConstraint name="uq_tenant_model_domain" columnNames="domain" oneToOne="false" nullableColumns=""/>
         </createTable>
         <createIndex indexName="ix_audit_log_tenant_id_entity_name_action_created_at_uniq_1" tableName="audit_log" columns="tenant_id,entity_name,action,created_at,unique_identifier,user_id"/>
+        <createIndex indexName="data_model_unique_identifier" tableName="data_model" columns="unique_identifier,tenant_id,application_id,schema_id"/>
         <createIndex indexName="report_execution_report_id_idx" tableName="report_execution_log" columns="report_id"/>
         <createIndex indexName="report_execution_status_idx" tableName="report_execution_log" columns="status,storage_location"/>
     </changeSet>

@@ -7,6 +7,7 @@ import io.javalin.openapi.*
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
 import my.baas.dto.SchemaModelCreateDto
+import my.baas.dto.SchemaModelUpdateDto
 import my.baas.dto.SchemaModelViewDto
 import my.baas.models.ApplicationModel
 import my.baas.models.SchemaModel
@@ -120,7 +121,7 @@ object SchemaController : CrudHandler {
             OpenApiParam(name = "applicationName", type = String::class, description = "The application name", required = true),
             OpenApiParam(name = "id", type = String::class, description = "The schema ID", required = true)
         ],
-        requestBody = OpenApiRequestBody(content = [OpenApiContent(from = SchemaModelCreateDto::class)]),
+        requestBody = OpenApiRequestBody(content = [OpenApiContent(from = SchemaModelUpdateDto::class)]),
         responses = [
             OpenApiResponse("200", description = "Schema updated successfully"),
             OpenApiResponse("400", description = "Bad request"),
@@ -133,15 +134,13 @@ object SchemaController : CrudHandler {
             ?: throw NotFoundResponse("Schema not found")
         val tenantId = CurrentUser.getTenant()?.id ?: throw IllegalStateException("No tenant in context")
 
-        val schemaUpdateDto = ctx.bodyAsClass(SchemaModelCreateDto::class.java)
+        val schemaUpdateDto = ctx.bodyAsClass(SchemaModelUpdateDto::class.java)
 
         // Store old indexed paths for comparison
         val oldIndexedPaths = schema.indexedJsonPaths
 
-        schema.entityName = schemaUpdateDto.entityName
         schema.jsonSchema = schemaUpdateDto.jsonSchema
         schema.versionName = schemaUpdateDto.versionName
-        schema.uniqueIdentifierFormatter = schemaUpdateDto.uniqueIdentifierFormatter
         schema.indexedJsonPaths = schemaUpdateDto.indexedJsonPaths
         schema.lifecycleScripts = schemaUpdateDto.lifecycleScripts
         schema.isValidationEnabled = schemaUpdateDto.isValidationEnabled
