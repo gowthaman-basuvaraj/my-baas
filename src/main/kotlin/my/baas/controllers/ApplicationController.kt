@@ -59,7 +59,7 @@ object ApplicationController : CrudHandler {
     override fun getOne(ctx: Context, resourceId: String) {
         val application = AppContext.db.find(ApplicationModel::class.java, resourceId)
             ?: throw NotFoundResponse("Application not found")
-        ctx.json(ApplicationModelViewDto.fromModel(application))
+        ctx.status(200).json(ApplicationModelViewDto.fromModel(application))
     }
 
     @OpenApi(
@@ -75,7 +75,7 @@ object ApplicationController : CrudHandler {
     override fun getAll(ctx: Context) {
         val applications = AppContext.db.find(ApplicationModel::class.java).findList()
         val appDtos = applications.map { ApplicationModelViewDto.fromModel(it) }
-        ctx.json(appDtos)
+        ctx.status(200).json(appDtos)
     }
 
     @OpenApi(
@@ -104,7 +104,7 @@ object ApplicationController : CrudHandler {
         application.isActive = appUpdateDto.isActive
         application.update()
 
-        ctx.json(ApplicationModelViewDto.fromModel(application))
+        ctx.status(200).json(ApplicationModelViewDto.fromModel(application))
     }
 
     @OpenApi(

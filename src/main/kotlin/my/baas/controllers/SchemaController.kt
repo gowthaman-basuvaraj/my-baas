@@ -76,7 +76,7 @@ object SchemaController : CrudHandler {
 
         val schema = AppContext.db.find(SchemaModel::class.java, resourceId)
             ?: throw NotFoundResponse("Schema not found")
-        ctx.json(SchemaModelViewDto.fromModel(schema))
+        ctx.status(200).json(SchemaModelViewDto.fromModel(schema))
     }
 
     @OpenApi(
@@ -109,7 +109,7 @@ object SchemaController : CrudHandler {
             .eq("application_id", application.id)
             .findList()
         val schemaDtos = schemas.map { SchemaModelViewDto.fromModel(it) }
-        ctx.json(schemaDtos)
+        ctx.status(200).json(schemaDtos)
     }
 
     @OpenApi(
@@ -151,7 +151,7 @@ object SchemaController : CrudHandler {
             TableManagementService.updateIndexes(schema, oldIndexedPaths, schemaUpdateDto.indexedJsonPaths, tenantId)
         }
 
-        ctx.json(SchemaModelViewDto.fromModel(schema))
+        ctx.status(200).json(SchemaModelViewDto.fromModel(schema))
     }
 
     @OpenApi(

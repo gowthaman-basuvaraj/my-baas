@@ -54,7 +54,7 @@ object ReportController {
         val reportId = UUID.fromString(ctx.pathParam("id"))
 
         val report = reportService.getReport(reportId)
-        ctx.json(ReportModelViewDto.fromModel(report))
+        ctx.status(200).json(ReportModelViewDto.fromModel(report))
     }
 
     @OpenApi(
@@ -91,7 +91,7 @@ object ReportController {
             "pageIndex" to reports.pageIndex,
         )
 
-        ctx.json(dtoResponse)
+        ctx.status(200).json(dtoResponse)
     }
 
     @OpenApi(
@@ -116,7 +116,7 @@ object ReportController {
         val reportCreateDto = ctx.bodyAsClass(ReportModelCreateDto::class.java)
         val updatedReport = reportCreateDto.toModel()
         val report = reportService.updateReport(reportId, updatedReport)
-        ctx.json(ReportModelViewDto.fromModel(report))
+        ctx.status(200).json(ReportModelViewDto.fromModel(report))
     }
 
     @OpenApi(
@@ -158,7 +158,7 @@ object ReportController {
     )
     fun getScheduledReports(ctx: Context) {
         val scheduledReports = reportService.getScheduledReports()
-        ctx.json(scheduledReports)
+        ctx.status(200).json(scheduledReports)
     }
 
     @OpenApi(
@@ -183,7 +183,7 @@ object ReportController {
         report.isActive = true
         val updatedReport = reportService.updateReport(reportId, report)
 
-        ctx.json(mapOf("message" to "Report activated successfully", "report" to updatedReport))
+        ctx.status(200).json(mapOf("message" to "Report activated successfully", "report" to updatedReport))
     }
 
     @OpenApi(
@@ -208,7 +208,7 @@ object ReportController {
         report.isActive = false
         val updatedReport = reportService.updateReport(reportId, report)
 
-        ctx.json(mapOf("message" to "Report deactivated successfully", "report" to updatedReport))
+        ctx.status(200).json(mapOf("message" to "Report deactivated successfully", "report" to updatedReport))
     }
 
     @OpenApi(
@@ -230,14 +230,14 @@ object ReportController {
 
             //todo: validate SQL
 
-            ctx.json(
+            ctx.status(200).json(
                 mapOf(
                     "valid" to true,
                     "message" to "SQL is valid"
                 )
             )
         } catch (e: Exception) {
-            ctx.json(
+            ctx.status(200).json(
                 mapOf(
                     "valid" to false,
                     "message" to (e.message ?: "Unknown validation error")
@@ -280,7 +280,7 @@ object ReportController {
     fun getJobStatus(ctx: Context) {
         val jobId = ctx.pathParam("jobId")
         val status = reportService.getJobStatus(jobId)
-        ctx.json(status)
+        ctx.status(200).json(status)
     }
 
     @OpenApi(
@@ -302,7 +302,7 @@ object ReportController {
         val cancelled = reportService.cancelJob(jobId)
 
         if (cancelled) {
-            ctx.json(mapOf("message" to "Job cancelled successfully", "jobId" to jobId))
+            ctx.status(200).json(mapOf("message" to "Job cancelled successfully", "jobId" to jobId))
         } else {
             throw BadRequestResponse("Failed to cancel job")
         }
@@ -339,7 +339,7 @@ object ReportController {
         val pageSize = ctx.queryParam("pageSize")?.toIntOrNull() ?: 20
 
         val history = reportService.getExecutionHistory(reportId, page, pageSize)
-        ctx.json(history)
+        ctx.status(200).json(history)
     }
 
     @OpenApi(

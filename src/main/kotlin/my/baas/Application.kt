@@ -2,13 +2,17 @@ package my.baas
 
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
 import io.javalin.json.JavalinJackson
 import my.baas.auth.AuthHandler
 import my.baas.auth.CurrentUser
 import my.baas.config.AppContext
+import my.baas.config.AppContext.db
+import my.baas.config.AppContext.objectMapper
 import my.baas.controllers.*
+import my.baas.dto.TenantUpdateDto
 import my.baas.models.ApplicationModel
 import my.baas.models.TenantModel
 import my.baas.services.DataModelService
@@ -20,7 +24,11 @@ private val logger = LoggerFactory.getLogger("my.baas.Application")
 fun main() {
     logger.info("Starting MyBaaS application...")
 
-    logger.info("Database connection initialized, Total Tenants = ${AppContext.db.find(TenantModel::class.java).findCount()}")
+    logger.info(
+        "Database connection initialized, Total Tenants = ${
+            db.find(TenantModel::class.java).findCount()
+        }"
+    )
 
     // Initialize Redis event publisher if enabled
     RedisEventPublisher.initialize()
@@ -28,7 +36,7 @@ fun main() {
 
     Javalin
         .create { config ->
-            config.jsonMapper(JavalinJackson(AppContext.objectMapper))
+            config.jsonMapper(JavalinJackson(objectMapper))
             config.bundledPlugins.enableCors { cors -> cors.addRule { it.anyHost() } }
             config.staticFiles.enableWebjars()
             if (AppContext.appConfig.isDev()) {
@@ -41,7 +49,7 @@ fun main() {
             }
             config.router.apiBuilder {
                 // Auth routes (public)
-                path("auth"){
+                path("auth") {
                     get("init", AuthController::getAuthInit)
                     post("token", AuthController::exchangeToken)
                     post("refresh", AuthController::refreshToken)
@@ -67,6 +75,32 @@ fun main() {
                 // Regular APIs - tenant-scoped
                 path("api") {
                     before(AuthHandler.handle)
+                    path("settings") {
+                        get("") {
+                            val tenantId = CurrentUser.getTenant() ?: throw UnauthorizedResponse("No tenant in context")
+                            it.status(200).json(tenantId)
+                        }
+                        post("") {
+                            val updateDto = it.bodyAsClass(TenantUpdateDto::class.java)
+                            db.update(TenantModel::class.java)
+                                .set("name", updateDto.name)
+                                .set("allowedIps", updateDto.allowedIps)
+                                //replace only the jwksUri
+                                .setRaw(
+                                    "configuration = configuration || cast(? as jsonb)",
+                                    objectMapper.writeValueAsString(updateDto.configuration)
+                                )
+                                //settings, append to existing settings
+                                .setRaw(
+                                    "settings = settings || cast(? as jsonb)",
+                                    objectMapper.writeValueAsString(updateDto.settings)
+                                )
+                                .where()
+                                .eq("id", CurrentUser.getTenant()?.id ?: throw BadRequestResponse("tenant missing?"))
+                                .update()
+                            it.status(204)
+                        }
+                    }
                     // Application management
                     crud("apps/{id}", ApplicationController)
                     // Application-scoped schemas
@@ -74,13 +108,15 @@ fun main() {
                         before { ctx ->
                             // Set application context from path
                             val applicationName = ctx.pathParam("applicationName")
-                            val tenantId = CurrentUser.getTenant()?.id ?: throw UnauthorizedResponse("No tenant in context")
-                            val application = AppContext.db.find(ApplicationModel::class.java)
+                            val tenantId =
+                                CurrentUser.getTenant()?.id ?: throw UnauthorizedResponse("No tenant in context")
+                            val application = db.find(ApplicationModel::class.java)
                                 .where()
                                 .eq("applicationName", applicationName)
                                 .eq("isActive", true)
                                 .eq("tenant_id", tenantId)
-                                .findOne() ?: throw UnauthorizedResponse("Application not found or Application Not Active")
+                                .findOne()
+                                ?: throw UnauthorizedResponse("Application not found or Application Not Active")
                             CurrentUser.setApplicationContext(application.id, application.applicationName)
                         }
                         crud("schemas/{id}", SchemaController)
@@ -99,7 +135,7 @@ fun main() {
                                     val versionName = ctx.pathParam("versionName")
                                     val entityName = ctx.pathParam("entityName")
                                     CurrentUser.setEntityContext(entityName, versionName)
-                                    if(!ctx.path().endsWith("/search")) {
+                                    if (!ctx.path().endsWith("/search")) {
                                         DataModelService.validateSchemaExistsForEntityAndVersion(
                                             entityName,
                                             versionName

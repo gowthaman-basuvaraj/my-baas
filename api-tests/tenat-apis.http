@@ -1,0 +1,41 @@
+### Tenant API Tests for MyBaaS
+### ============================================
+### Tenant self management, system configuration, etc.
+### ============================================
+
+### Create a new tenant
+POST {{baseUrl}}/api/settings
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "name": "Acme Corporation",
+  "allowedIps": ["192.168.1.0/24", "10.0.0.0/8"],
+  "settings": {},
+  "config": {
+    "jwksUri": "http://localhost:8080/.well-known/openid-configuration"
+  }
+}
+
+> {% 
+client.test("Tenant updated successfully", function() {
+    client.assert(response.status === 204, "Expected status 204 - No Content");
+    client.assert(response.body.id !== undefined, "Response should contain tenant ID");
+    client.assert(response.body.name === "Acme Corporation", "Name should match");
+});
+%}
+
+
+###
+### Get the loggedin tenant
+GET {{baseUrl}}/api/settings
+Authorization: {{authToken}}
+
+
+> {%
+    client.test("Tenant updated successfully", function() {
+        client.assert(response.status === 200, "Expected status 200 - OK");
+        client.assert(response.body.id !== undefined, "Response should contain tenant ID");
+        client.assert(response.body.name === "Acme Corporation", "Name should match");
+    });
+%}

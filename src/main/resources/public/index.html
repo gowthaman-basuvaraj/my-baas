@@ -547,14 +547,9 @@
             this.initTheme();
 
             await this.initAuth();
-            // Start auto-refreshing stats after auth is complete
-            if (this.authenticated) {
-                this.startStatsAutoRefresh();
-            }
         },
         beforeUnmount() {
-            // Clean up the interval when component is destroyed
-            this.stopStatsAutoRefresh();
+
         }
     }).mount('#app');
 </script>

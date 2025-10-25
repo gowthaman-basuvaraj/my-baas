@@ -65,7 +65,7 @@ object DataModelController {
 
         val dataModel = dataModelService.findByUniqueIdentifier(entityName, uniqueIdentifier)
             ?: throw NotFoundResponse("DataModel not found for entity: $entityName, and uniqueIdentifier: $uniqueIdentifier")
-        ctx.json(dataModel)
+        ctx.status(200).json(dataModel)
     }
 
     @OpenApi(
@@ -94,7 +94,7 @@ object DataModelController {
 
         val dataModels = dataModelService.findAllByEntityName(entityName, versionName, pageNo, pageSize)
 
-        ctx.json(
+        ctx.status(200).json(
             mapOf(
                 "pageSize" to dataModels.pageSize,
                 "totalCount" to dataModels.totalCount,
@@ -137,7 +137,7 @@ object DataModelController {
         val data = ctx.bodyAsClass(Map::class.java) as Map<String, Any>
         val result = dataModelService.update(uniqueIdentifier, entityName, versionName, data)
             ?: throw NotFoundResponse("DataModel not found")
-        ctx.json(result)
+        ctx.status(200).json(result)
     }
 
     @OpenApi(
@@ -171,7 +171,7 @@ object DataModelController {
         val patchData = ctx.bodyAsClass(Map::class.java) as Map<String, Any>
         val result = dataModelService.patch(uniqueIdentifier, entityName, versionName, patchData)
             ?: throw NotFoundResponse("DataModel not found")
-        ctx.json(result)
+        ctx.status(200).json(result)
     }
 
     @OpenApi(
@@ -239,7 +239,7 @@ object DataModelController {
             request.destinationVersion
         )
 
-        ctx.json(migratedDataModel)
+        ctx.status(200).json(migratedDataModel)
     }
 
     @OpenApi(
@@ -262,7 +262,7 @@ object DataModelController {
         val versionName = ctx.pathParam("versionName")
 
         val schema = dataModelService.getSchema(entityName, versionName)
-        ctx.json(schema)
+        ctx.status(200).json(schema)
     }
 
     @OpenApi(
@@ -287,7 +287,7 @@ object DataModelController {
 
         val payload = ctx.bodyAsClass(Map::class.java) as Map<String, Any>
         val validationResult = dataModelService.validatePayload(entityName, versionName, payload)
-        ctx.json(validationResult)
+        ctx.status(200).json(validationResult)
     }
 
     @OpenApi(
@@ -315,7 +315,7 @@ object DataModelController {
             pageSize = searchRequest.pageSize
         )
 
-        ctx.json(results)
+        ctx.status(200).json(results)
     }
 
 }

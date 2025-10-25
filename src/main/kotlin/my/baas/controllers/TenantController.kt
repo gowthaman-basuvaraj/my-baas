@@ -5,6 +5,7 @@ import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
 import io.javalin.openapi.*
 import my.baas.config.AppContext
+import my.baas.config.AppContext.adminDatabase
 import my.baas.models.TenantConfiguration
 import my.baas.models.TenantModel
 import java.util.UUID
@@ -27,7 +28,7 @@ object TenantController {
         val tenant = ctx.bodyAsClass(TenantModel::class.java)
 
         // Check if the domain already exists
-        val existingTenant = AppContext.adminDatabase.find(TenantModel::class.java)
+        val existingTenant = adminDatabase.find(TenantModel::class.java)
             .where()
             .eq("domain", tenant.domain)
             .findOne()
@@ -61,10 +62,10 @@ object TenantController {
     fun getOne(ctx: Context) {
         val tenantId = UUID.fromString(ctx.pathParam("id"))
 
-        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
+        val tenant = adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
-        ctx.json(tenant)
+        ctx.status(200).json(tenant)
     }
 
     @OpenApi(
@@ -85,12 +86,12 @@ object TenantController {
         val page = ctx.queryParam("page")?.toIntOrNull() ?: 1
         val pageSize = ctx.queryParam("pageSize")?.toIntOrNull() ?: 20
 
-        val tenants = AppContext.adminDatabase.find(TenantModel::class.java)
+        val tenants = adminDatabase.find(TenantModel::class.java)
             .setFirstRow((page - 1) * pageSize)
             .setMaxRows(pageSize)
             .findPagedList()
 
-        ctx.json(tenants)
+        ctx.status(200).json(tenants)
     }
 
     @OpenApi(
@@ -112,14 +113,14 @@ object TenantController {
     fun update(ctx: Context) {
         val tenantId = UUID.fromString(ctx.pathParam("id"))
 
-        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
+        val tenant = adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         val updatedTenant = ctx.bodyAsClass(TenantModel::class.java)
 
         // Check if new domain conflicts with existing tenant
         if (tenant.domain != updatedTenant.domain) {
-            val domainExists = AppContext.adminDatabase.find(TenantModel::class.java)
+            val domainExists = adminDatabase.find(TenantModel::class.java)
                 .where()
                 .eq("domain", updatedTenant.domain)
                 .ne("id", tenantId)
@@ -141,7 +142,7 @@ object TenantController {
         tenant.settings = updatedTenant.settings
         tenant.update()
 
-        ctx.json(tenant)
+        ctx.status(200).json(tenant)
     }
 
     @OpenApi(
@@ -162,7 +163,7 @@ object TenantController {
     fun delete(ctx: Context) {
         val tenantId = UUID.fromString(ctx.pathParam("id"))
 
-        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
+        val tenant = adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         tenant.delete()
@@ -187,13 +188,13 @@ object TenantController {
     fun activate(ctx: Context) {
         val tenantId = UUID.fromString(ctx.pathParam("id"))
 
-        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
+        val tenant = adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         tenant.isActive = true
         tenant.update()
 
-        ctx.json(mapOf("message" to "Tenant activated successfully", "tenant" to tenant))
+        ctx.status(200).json(mapOf("message" to "Tenant activated successfully", "tenant" to tenant))
     }
 
     @OpenApi(
@@ -214,13 +215,13 @@ object TenantController {
     fun deactivate(ctx: Context) {
         val tenantId = UUID.fromString(ctx.pathParam("id"))
 
-        val tenant = AppContext.adminDatabase.find(TenantModel::class.java, tenantId)
+        val tenant = adminDatabase.find(TenantModel::class.java, tenantId)
             ?: throw NotFoundResponse("Tenant not found")
 
         tenant.isActive = false
         tenant.update()
 
-        ctx.json(mapOf("message" to "Tenant deactivated successfully", "tenant" to tenant))
+        ctx.status(200).json(mapOf("message" to "Tenant deactivated successfully", "tenant" to tenant))
     }
 
     private fun validateTenantConfiguration(config: TenantConfiguration) {
