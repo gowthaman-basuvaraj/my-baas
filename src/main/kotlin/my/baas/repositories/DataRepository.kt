@@ -109,7 +109,8 @@ object DataRepository {
     }
 
     private fun buildFilterCondition(filter: FilterDto, q: ExpressionList<DataModel>) {
-        val castType = if (filter.value is Number) "numeric" else "text"
+        val firstValue = filter.getListValue().first()!!
+        val castType = if (firstValue is Number) "numeric" else "text"
         val jsonPath = parseJsonPathToChain(filter.jsonPath)
         val jsonPathChain = "($jsonPath)::$castType"
 
@@ -123,7 +124,7 @@ object DataRepository {
             FilterOperator.GE -> q.raw("$jsonPath >= cast(? as jsonb)", om.writeValueAsString(filter.value))
             FilterOperator.IN -> q.`in`(jsonPathChain, filter.value)
             FilterOperator.NOT_IN -> q.notIn(jsonPathChain, filter.value)
-            FilterOperator.ARRAY_CONTAINS -> q.raw("$jsonPath ?? ?", filter.getListValue().first()!!)
+            FilterOperator.ARRAY_CONTAINS -> q.raw("$jsonPath ?? ?", firstValue)
             FilterOperator.CONTAINS -> q.raw(
                 "$jsonPath @> cast(? as jsonb)",
                 om.writeValueAsString(filter.value)
@@ -134,7 +135,7 @@ object DataRepository {
                 om.writeValueAsString(filter.value)
             )
 
-            FilterOperator.HAS_KEY -> q.raw("$jsonPath ?? ?", filter.getListValue().first()!!)
+            FilterOperator.HAS_KEY -> q.raw("$jsonPath ?? ?", firstValue)
             FilterOperator.HAS_ANY_KEYS -> q.raw("$jsonPath ??| ?", filter.getListValue())
             FilterOperator.HAS_ALL_KEYS -> q.raw("$jsonPath ??& ?", filter.getListValue())
             FilterOperator.PATH_EXISTS -> q.raw("$jsonPath @?? cast(? as jsonpath)", filter.value)
